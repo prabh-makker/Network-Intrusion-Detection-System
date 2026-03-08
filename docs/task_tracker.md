@@ -12,10 +12,11 @@
     - [x] Synthetic NSL-KDD dataset generation script (`/ml-models/nids_training/train.py`)
     - [x] Train Random Forest classifier with 98%+ Accuracy
     - [x] Integrate AI inference into `sniffer/sniffer.py` using `joblib`
-- [/] **Phase 3: Real-time UI & Alerts**
+- [x] **Phase 3: Real-time UI & Alerts**
     - [x] Build React dashboard with Recharts (under `/frontend`)
     - [x] Establish WebSocket communication (mocked in backend)
     - [x] Dynamic Light/Dark mode with tailored CSS coloring
-    - [ ] Implement advanced threat alert system (Email/Discord Hooks)
-    - [ ] Add explainability for AI predictions in the UI
+    - [x] Alerts page with threat list, search/filter, and block actions
+    - [x] AI Explainability panel (why did the model flag this?)
+    - [x] Top Threat Sources & aggregated stats API
 
