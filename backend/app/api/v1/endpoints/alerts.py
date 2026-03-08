@@ -1,0 +1,122 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import desc, func
+from app.db.session import get_db
+from app.models.models import ThreatLog
+from typing import Optional
+
+router = APIRouter()
+
+# AI Explainability data - feature importance from trained Random Forest
+FEATURE_IMPORTANCE = {
+    "DoS": {
+        "description": "Denial of Service attack detected. High volume of connections with elevated error rates indicates a flood-based attack attempting to overwhelm system resources.",
+        "key_indicators": [
+            {"feature": "serror_rate", "impact": "HIGH", "detail": "SYN error rate exceeds 80%, indicating SYN flood"},
+            {"feature": "count", "impact": "HIGH", "detail": "Connection count > 200 from single source"},
+            {"feature": "srv_count", "impact": "MEDIUM", "detail": "Repeated service targeting pattern"},
+        ],
+        "severity": "CRITICAL",
+        "mitigation": "Rate limit the source IP. Enable SYN cookies. Consider blackholing the traffic."
+    },
+    "DDoS (Ping of Death)": {
+        "description": "Distributed Denial of Service via oversized ICMP packets. Malformed ping packets exceed maximum allowed size, potentially causing buffer overflow.",
+        "key_indicators": [
+            {"feature": "src_bytes", "impact": "CRITICAL", "detail": "ICMP packet size > 65535 bytes (illegal)"},
+            {"feature": "protocol_type", "impact": "HIGH", "detail": "ICMP protocol with anomalous payload"},
+            {"feature": "duration", "impact": "MEDIUM", "detail": "Sustained attack over extended period"},
+        ],
+        "severity": "CRITICAL",
+        "mitigation": "Block oversized ICMP at firewall. Enable ICMP rate limiting. Deploy DDoS mitigation."
+    },
+    "Probe": {
+        "description": "Network reconnaissance/scanning detected. Attacker is mapping network topology and open services to identify vulnerabilities for future exploitation.",
+        "key_indicators": [
+            {"feature": "diff_srv_rate", "impact": "HIGH", "detail": "High diversity in targeted services (port scanning)"},
+            {"feature": "count", "impact": "HIGH", "detail": "Rapid connection attempts across multiple ports"},
+            {"feature": "flag", "impact": "MEDIUM", "detail": "REJ/RST flags indicate rejected connection probes"},
+        ],
+        "severity": "HIGH",
+        "mitigation": "Enable port scan detection rules. Consider honeypot deployment. Log source for threat intelligence."
+    },
+    "U2R (Root Access)": {
+        "description": "User-to-Root privilege escalation attempt. Attacker has user-level access and is attempting to gain root/admin privileges through exploitation.",
+        "key_indicators": [
+            {"feature": "service", "impact": "CRITICAL", "detail": "Targeting privileged services (shell, root)"},
+            {"feature": "flag", "impact": "HIGH", "detail": "RSTR flag indicates connection reset after exploitation attempt"},
+            {"feature": "src_bytes", "impact": "MEDIUM", "detail": "Payload contains potential shellcode or exploit"},
+        ],
+        "severity": "CRITICAL",
+        "mitigation": "Immediately isolate affected host. Audit user accounts. Check for rootkits. Rotate credentials."
+    },
+}
+
+@router.get("/recent")
+async def get_recent_alerts(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=50, le=200),
+    label: Optional[str] = None
+):
+    """Fetch recent threat alerts from the database."""
+    query = db.query(ThreatLog).order_by(desc(ThreatLog.timestamp))
+    if label:
+        query = query.filter(ThreatLog.label == label)
+    alerts = query.limit(limit).all()
+    
+    return [
+        {
+            "id": str(a.id),
+            "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+            "src_ip": a.src_ip,
+            "dst_ip": a.dst_ip,
+            "protocol": a.protocol,
+            "label": a.label,
+            "confidence": a.confidence,
+            "is_blocked": a.is_blocked,
+        }
+        for a in alerts
+    ]
+
+@router.get("/stats")
+async def get_alert_stats(db: Session = Depends(get_db)):
+    """Get aggregated threat statistics."""
+    total = db.query(func.count(ThreatLog.id)).scalar() or 0
+    by_label = (
+        db.query(ThreatLog.label, func.count(ThreatLog.id))
+        .group_by(ThreatLog.label)
+        .all()
+    )
+    top_sources = (
+        db.query(ThreatLog.src_ip, func.count(ThreatLog.id).label("count"))
+        .group_by(ThreatLog.src_ip)
+        .order_by(desc("count"))
+        .limit(10)
+        .all()
+    )
+    
+    return {
+        "total_threats": total,
+        "by_label": {label: count for label, count in by_label},
+        "top_sources": [{"ip": ip, "count": c} for ip, c in top_sources],
+    }
+
+@router.get("/explain/{label}")
+async def explain_threat(label: str):
+    """AI Explainability endpoint - returns why the model flagged this threat type."""
+    explanation = FEATURE_IMPORTANCE.get(label)
+    if not explanation:
+        return {"error": f"No explanation available for label: {label}"}
+    return {
+        "label": label,
+        **explanation
+    }
+
+@router.post("/{alert_id}/block")
+async def block_threat(alert_id: str, db: Session = Depends(get_db)):
+    """Mark a threat as blocked."""
+    alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id).first()
+    if not alert:
+        return {"error": "Alert not found"}
+    alert.is_blocked = True
+    db.commit()
+    return {"status": "blocked", "id": alert_id}

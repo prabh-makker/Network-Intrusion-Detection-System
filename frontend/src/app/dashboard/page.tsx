@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -134,6 +135,9 @@ export default function NIDSDashboard() {
           >
             {isLightMode ? <Moon size={20} className="text-slate-700" /> : <Sun size={20} className="text-amber-400" />}
           </button>
+          <Link href="/alerts" className="glass-panel px-4 py-3 rounded-xl text-sm font-bold text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-2">
+            <ShieldAlert size={16} /> Alerts
+          </Link>
           <div className="glass-panel px-6 py-3 rounded-xl flex items-center gap-3">
             <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">Network Status</span>
             <div className={`font-black tracking-wider ${statusColors[currentStatus]} flex items-center gap-2`}>
