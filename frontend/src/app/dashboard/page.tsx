@@ -120,7 +120,7 @@ export default function NIDSDashboard() {
                 {isLive && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
                 <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isLive ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
               </span>
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
                 {isLive ? 'Live Stream Active' : 'Disconnected'}
               </span>
             </div>
@@ -135,7 +135,7 @@ export default function NIDSDashboard() {
             {isLightMode ? <Moon size={20} className="text-slate-700" /> : <Sun size={20} className="text-amber-400" />}
           </button>
           <div className="glass-panel px-6 py-3 rounded-xl flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Network Status</span>
+            <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">Network Status</span>
             <div className={`font-black tracking-wider ${statusColors[currentStatus]} flex items-center gap-2`}>
               {currentStatus === 'SECURE' ? <ShieldCheck size={18} /> : <ServerCrash size={18} />}
               {currentStatus}
@@ -161,7 +161,7 @@ export default function NIDSDashboard() {
                 <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl ${stat.bg} group-hover:scale-150 transition-transform duration-500`} />
                 <div className="relative z-10 flex justify-between items-start">
                   <div>
-                    <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{stat.label}</h4>
+                    <h4 className="text-[var(--muted)] text-xs font-bold uppercase tracking-widest mb-1">{stat.label}</h4>
                     <span className="text-3xl font-black">{stat.val}</span>
                   </div>
                   <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
@@ -174,7 +174,7 @@ export default function NIDSDashboard() {
 
           {/* Flow Chart */}
           <div className="glass-panel p-6 rounded-2xl flex-1 min-h-[300px] flex flex-col">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">Traffic & Threat Flow (Mbits/s)</h3>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)] mb-6">Traffic & Threat Flow (Mbits/s)</h3>
             <div className="flex-1 w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={getTrafficData()}>
@@ -222,17 +222,17 @@ export default function NIDSDashboard() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   key={p.timestamp.toString() + i}
-                  className={`p-4 rounded-xl border ${p.is_threat ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-800/50 border-slate-700/50'} text-sm font-mono`}
+                  className={`p-4 rounded-xl border ${p.is_threat ? 'bg-rose-500/10 border-rose-500/30' : 'bg-[var(--card-bg)] border-[var(--card-border)]'} text-sm font-mono`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded ${p.is_threat ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                       {p.label} {p.confidence}%
                     </span>
-                    <span className="text-xs text-slate-500">{p.protocol} | {p.length}B</span>
+                    <span className="text-xs text-[var(--muted)]">{p.protocol} | {p.length}B</span>
                   </div>
-                  <div className="flex flex-col gap-1 text-slate-300 text-xs">
-                    <div className="truncate"><span className="text-slate-500">SRC:</span> {p.src_ip}</div>
-                    <div className="truncate"><span className="text-slate-500">DST:</span> {p.dst_ip}</div>
+                  <div className="flex flex-col gap-1 text-[var(--foreground)] text-xs">
+                    <div className="truncate"><span className="text-[var(--muted)]">SRC:</span> {p.src_ip}</div>
+                    <div className="truncate"><span className="text-[var(--muted)]">DST:</span> {p.dst_ip}</div>
                   </div>
                 </motion.div>
               ))}
