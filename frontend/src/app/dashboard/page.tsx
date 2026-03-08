@@ -9,7 +9,9 @@ import {
   Cpu, 
   Database,
   Radio,
-  ServerCrash
+  ServerCrash,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -40,7 +42,16 @@ export default function NIDSDashboard() {
   const [packets, setPackets] = useState<Packet[]>([]);
   const [threatCount, setThreatCount] = useState(0);
   const [isLive, setIsLive] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false);
   
+  useEffect(() => {
+    if (isLightMode) {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [isLightMode]);
+
   // Connect to websocket
   useEffect(() => {
     // We will establish the WS connection to FastAPI
@@ -117,6 +128,12 @@ export default function NIDSDashboard() {
         </div>
 
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsLightMode(!isLightMode)}
+            className="glass-panel p-3 rounded-xl hover:bg-slate-800/10 transition-colors"
+          >
+            {isLightMode ? <Moon size={20} className="text-slate-700" /> : <Sun size={20} className="text-amber-400" />}
+          </button>
           <div className="glass-panel px-6 py-3 rounded-xl flex items-center gap-3">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Network Status</span>
             <div className={`font-black tracking-wider ${statusColors[currentStatus]} flex items-center gap-2`}>
@@ -189,7 +206,7 @@ export default function NIDSDashboard() {
         {/* Right Col: Live Packet Inspection */}
         <div className="glass-panel p-6 rounded-2xl flex flex-col h-full overflow-hidden border-t-2 border-t-blue-500/50">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] flex items-center gap-2">
               <Cpu size={16} className="text-blue-500" />
               Live Inference
             </h3>

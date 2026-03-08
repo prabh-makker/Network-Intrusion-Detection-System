@@ -26,34 +26,53 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-def generate_mock_packet():
-    # Mocking a classified network packet
-    protocols = ["TCP", "UDP", "ICMP"]
-    labels = ["Normal", "Normal", "Normal", "DDoS", "Port Scan", "SQL Injection", "Normal"]
-    
-    src_ip = f"192.168.1.{random.randint(1, 255)}"
-    dst_ip = f"10.0.0.{random.randint(1, 255)}"
-    label = random.choice(labels)
-    
-    return {
-        "timestamp": asyncio.get_event_loop().time(),
-        "src_ip": src_ip,
-        "dst_ip": dst_ip,
-        "protocol": random.choice(protocols),
-        "length": random.randint(40, 1500),
-        "label": label,
-        "confidence": round(random.uniform(0.7, 0.99) if label != "Normal" else 0.99, 2),
-        "is_threat": label != "Normal"
-    }
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from app.db.session import get_db
+from app.models.models import ThreatLog
+import time
+
+class PacketLog(BaseModel):
+    timestamp: float
+    src_ip: str
+    dst_ip: str
+    protocol: str
+    length: int
+    label: str
+    confidence: float
+    is_threat: bool
+
+@router.post("/log")
+async def log_packet(packet: PacketLog, db: Session = Depends(get_db)):
+    # Save to database if it's a threat
+    if True: # Let's save all for now or just threats. Let's do threats only to save space.
+        pass
+        
+    if packet.is_threat:
+        log_entry = ThreatLog(
+            src_ip=packet.src_ip,
+            dst_ip=packet.dst_ip,
+            protocol=packet.protocol,
+            label=packet.label,
+            confidence=packet.confidence,
+            is_blocked=False
+        )
+        db.add(log_entry)
+        db.commit()
+        db.refresh(log_entry)
+
+    # Broadcast to all connected websocket clients
+    await manager.broadcast(packet.json())
+    return {"status": "success", "message": "Packet logged"}
 
 @router.websocket("/stream")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Simulate streaming network packets at 1-2 packets per second
-            await asyncio.sleep(random.uniform(0.5, 1.5))
-            packet = generate_mock_packet()
-            await manager.broadcast(json.dumps(packet))
+            # Keep connection open, wait for incoming messages if any, 
+            # but primary data comes from the POST endpoint broadcast.
+            data = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
