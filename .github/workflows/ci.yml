@@ -23,7 +23,8 @@ jobs:
     - name: Test with pytest
       run: |
         cd backend
-        pytest
+        PYTHONPATH=. pytest
+
 
   test-frontend:
     runs-on: ubuntu-latest
