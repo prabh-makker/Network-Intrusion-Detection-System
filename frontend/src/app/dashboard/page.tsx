@@ -14,7 +14,9 @@ import {
   Sun,
   Moon,
   LogOut,
-  Globe
+  Globe,
+  FileUp,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -54,6 +56,8 @@ export default function NIDSDashboard() {
   const [timelineRange, setTimelineRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pcapSummary, setPcapSummary] = useState<any>(null);
 
 
   // Fetch real historical data from backend
@@ -148,6 +152,39 @@ export default function NIDSDashboard() {
       });
     }
     return data;
+  };
+
+  const handlePCAPUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setPcapSummary(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/traffic/upload-pcap`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.status === 'completed') {
+        setPcapSummary(data.analysis);
+        // Refresh dashboard stats
+        fetchTimeline();
+      } else {
+        alert(data.error || "Analysis failed");
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Error connecting to server. Make sure PCAP is < 10MB.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const currentStatus = threatCount > 10 ? 'CRITICAL' : (threatCount > 0 ? 'WARNING' : 'SECURE');
@@ -289,6 +326,49 @@ export default function NIDSDashboard() {
             </h3>
             <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded-md font-mono">{packets.length} buffered</span>
           </div>
+
+          {/* PCAP UPLOAD ZONE */}
+          <div className="mb-6 p-4 rounded-xl border border-dashed border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 transition-all relative overflow-hidden">
+            <input
+              type="file"
+              accept=".pcap"
+              onChange={handlePCAPUpload}
+              className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+              disabled={isUploading}
+            />
+            <div className="flex flex-col items-center justify-center gap-2 py-2">
+              <FileUp size={24} className={`${isUploading ? 'animate-bounce' : ''} text-blue-500`} />
+              <div className="text-center">
+                <p className="text-xs font-bold text-slate-300">{isUploading ? 'Analyzing Capture...' : 'Analyze PCAP History'}</p>
+                <p className="text-[10px] text-[var(--muted)]">Drag or Click to Upload</p>
+              </div>
+            </div>
+            {isUploading && <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-loading-bar w-full" />}
+          </div>
+
+          {/* ANALYSIS RESULTS MINI-MODAL */}
+          {pcapSummary && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 relative"
+            >
+              <button onClick={() => setPcapSummary(null)} className="absolute top-2 right-2 text-slate-500 hover:text-white">
+                <X size={14} />
+              </button>
+              <h4 className="text-xs font-black text-indigo-400 uppercase mb-2">Analysis Complete</h4>
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                <div className="bg-slate-900/40 p-2 rounded">
+                  <p className="text-slate-400">PACKETS</p>
+                  <p className="text-lg">{pcapSummary.packets_processed}</p>
+                </div>
+                <div className="bg-rose-900/20 p-2 rounded">
+                  <p className="text-rose-400">THREATS</p>
+                  <p className="text-lg">{pcapSummary.threats_detected}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
             <AnimatePresence>

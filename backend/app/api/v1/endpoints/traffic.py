@@ -115,3 +115,36 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
             data = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+import uuid
+import os
+import shutil
+from fastapi import File, UploadFile
+from app.services.pcap_service import pcap_analyzer
+from app.api import deps
+
+@router.post("/upload-pcap")
+async def upload_pcap(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Securely upload and analyze a PCAP file for historical threats."""
+    if not file.filename.endswith('.pcap'):
+        return {"error": "Only .pcap files are supported"}
+    
+    # Save temp file
+    temp_path = f"temp_{uuid.uuid4()}.pcap"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    try:
+        results = pcap_analyzer.analyze(temp_path, db)
+        return {
+            "status": "completed",
+            "filename": file.filename,
+            "analysis": results
+        }
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

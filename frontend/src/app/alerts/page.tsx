@@ -130,10 +130,20 @@ export default function AlertsPage() {
 
   const handleBlock = async (alertId: string) => {
     try {
-      await fetchWithAuth(`${apiUrl}/api/v1/alerts/${alertId}/block`, { method: 'POST' });
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/${alertId}/block`, { method: 'POST' });
+      const data = await res.json();
+
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, is_blocked: true } : a));
-    } catch (e) { console.error(e); }
+
+      if (data.firewall_active) {
+        alert(`🛡️ ACTIVE DEFENSE: IP ${data.ip} has been permanently banned from the OS firewall.`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to block threat. Check server permissions.");
+    }
   };
+
 
   const handleExportPDF = async () => {
     try {
