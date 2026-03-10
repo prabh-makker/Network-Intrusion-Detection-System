@@ -202,16 +202,35 @@ async def geoip_lookup(
     except Exception:
         raise HTTPException(status_code=502, detail="GeoIP lookup failed")
 
+from app.services.firewall_service import firewall_service
+import uuid
+
 @router.post("/{alert_id}/block")
 async def block_threat(
     alert_id: str, 
     db: Session = Depends(get_db),
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Mark a threat as blocked."""
-    alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id).first()
+    """Mark a threat as blocked and ban the IP on the OS Firewall."""
+    try:
+        alert_id_uuid = uuid.UUID(alert_id)
+    except ValueError:
+        return {"error": "Invalid alert ID format"}
+
+    alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id_uuid).first()
     if not alert:
         return {"error": "Alert not found"}
+    
+    # Active Defense: Ban the IP via pfctl/iptables
+    firewall_status = firewall_service.block_ip(alert.src_ip)
+    
     alert.is_blocked = True
     db.commit()
-    return {"status": "blocked", "id": alert_id}
+    
+    return {
+        "status": "blocked", 
+        "id": alert_id, 
+        "ip": alert.src_ip, 
+        "firewall_active": firewall_status
+    }
+
