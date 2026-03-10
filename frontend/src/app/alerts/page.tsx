@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  ChevronRight, 
+import {
+  ShieldAlert,
+  ShieldCheck,
+  ChevronRight,
   Search,
   ArrowLeft,
   Ban,
@@ -15,10 +15,14 @@ import {
   AlertTriangle,
   Skull,
   Radar,
-  Lock
+  Lock,
+  LogOut,
+  DownloadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { fetchWithAuth, getToken, removeToken } from '@/lib/auth';
 
 type Alert = {
   id: string;
@@ -59,12 +63,22 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export default function AlertsPage() {
+  const router = useRouter();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [isLightMode, setIsLightMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  // Auth Check
+  useEffect(() => {
+    if (!getToken()) {
+      router.push('/login');
+    }
+  }, [router]);
 
   useEffect(() => {
     if (isLightMode) {
@@ -78,10 +92,10 @@ export default function AlertsPage() {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const url = selectedLabel 
-          ? `http://localhost:8000/api/v1/alerts/recent?limit=100&label=${encodeURIComponent(selectedLabel)}`
-          : `http://localhost:8000/api/v1/alerts/recent?limit=100`;
-        const res = await fetch(url);
+        const url = selectedLabel
+          ? `${apiUrl}/api/v1/alerts/recent?limit=100&label=${encodeURIComponent(selectedLabel)}`
+          : `${apiUrl}/api/v1/alerts/recent?limit=100`;
+        const res = await fetchWithAuth(url);
         const data = await res.json();
         setAlerts(data);
       } catch (e) { console.error(e); }
@@ -95,7 +109,7 @@ export default function AlertsPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/alerts/stats");
+        const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`);
         const data = await res.json();
         setStats(data);
       } catch (e) { console.error(e); }
@@ -108,7 +122,7 @@ export default function AlertsPage() {
   // Fetch explanation when label selected
   const fetchExplanation = async (label: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/alerts/explain/${encodeURIComponent(label)}`);
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/explain/${encodeURIComponent(label)}`);
       const data = await res.json();
       setExplanation(data);
     } catch (e) { console.error(e); }
@@ -116,14 +130,31 @@ export default function AlertsPage() {
 
   const handleBlock = async (alertId: string) => {
     try {
-      await fetch(`http://localhost:8000/api/v1/alerts/${alertId}/block`, { method: 'POST' });
+      await fetchWithAuth(`${apiUrl}/api/v1/alerts/${alertId}/block`, { method: 'POST' });
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, is_blocked: true } : a));
     } catch (e) { console.error(e); }
   };
 
-  const filteredAlerts = alerts.filter(a => 
-    a.src_ip.includes(searchTerm) || 
-    a.dst_ip.includes(searchTerm) || 
+  const handleExportPDF = async () => {
+    try {
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/export`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nids-threat-report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to export PDF:", e);
+    }
+  };
+
+  const filteredAlerts = alerts.filter(a =>
+    a.src_ip.includes(searchTerm) ||
+    a.dst_ip.includes(searchTerm) ||
     a.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -146,12 +177,31 @@ export default function AlertsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setIsLightMode(!isLightMode)}
             className="glass-panel p-3 rounded-xl hover:bg-slate-800/10 transition-colors"
           >
             {isLightMode ? <Moon size={20} className="text-slate-700" /> : <Sun size={20} className="text-amber-400" />}
           </button>
+
+          <button
+            onClick={() => {
+              removeToken();
+              router.push('/login');
+            }}
+            className="glass-panel p-3 rounded-xl text-[var(--muted)] hover:text-rose-400 transition-colors flex items-center gap-2"
+            title="Sign Out"
+          >
+            <LogOut size={20} />
+          </button>
+
+          <button
+            onClick={handleExportPDF}
+            className="glass-panel px-4 py-3 rounded-xl text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2"
+          >
+            <DownloadCloud size={16} /> Export PDF
+          </button>
+
           <Link href="/dashboard" className="glass-panel px-4 py-3 rounded-xl text-sm font-bold text-[var(--muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-2">
             <BarChart3 size={16} /> Dashboard
           </Link>
@@ -185,9 +235,9 @@ export default function AlertsPage() {
           {/* Search */}
           <div className="glass-panel px-4 py-3 rounded-xl flex items-center gap-3">
             <Search size={16} className="text-[var(--muted)]" />
-            <input 
-              type="text" 
-              placeholder="Search by IP, label..." 
+            <input
+              type="text"
+              placeholder="Search by IP, label..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--foreground)] placeholder-[var(--muted)]"
@@ -235,7 +285,7 @@ export default function AlertsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
+                    <button
                       onClick={() => fetchExplanation(alert.label)}
                       className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
                       title="Explain"
@@ -243,7 +293,7 @@ export default function AlertsPage() {
                       <Info size={14} />
                     </button>
                     {!alert.is_blocked && (
-                      <button 
+                      <button
                         onClick={() => handleBlock(alert.id)}
                         className="p-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors"
                         title="Block IP"

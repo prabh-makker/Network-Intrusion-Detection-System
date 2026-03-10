@@ -15,7 +15,10 @@ def start_mock():
             # Simulate a continuous stream of normal traffic mixed with occasional threats
             time.sleep(random.uniform(0.1, 1.5))
             
-            src_ip = f"192.168.1.{random.randint(1, 255)}"
+            # Use public IPs for realistic Geo-IP mapping in our React dashboard Heatmap
+            public_ip_blocks = ["185.10", "13.210", "114.119", "45.22", "172.67", "103.22", "142.250", "20.198"]
+            src_ip = f"{random.choice(public_ip_blocks)}.{random.randint(1, 255)}.{random.randint(1, 255)}"
+            
             dst_ip = f"10.0.0.{random.randint(1, 255)}"
             
             is_threat = random.random() < 0.2  # 20% chance of being a threat

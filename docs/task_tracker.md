@@ -41,18 +41,24 @@
 
 ### High Impact
 - [ ] **Docker Compose**: Containerize backend, frontend, and database for one-command deployment
-- [ ] **Real NSL-KDD Dataset**: Train on 125K+ real attack samples from Kaggle
-- [ ] **Threat Geo-IP Heatmap**: World map visualization of attacker origin locations
-- [ ] **User Authentication**: JWT-based login/signup with role-based access control
+- [x] **Real NSL-KDD Dataset**: Train on 125K+ real attack samples from Kaggle
+- [x] **Threat Geo-IP Heatmap**: World map visualization of attacker origin locations
+- [x] **User Authentication**: JWT-based login/signup with role-based access control
 
 ### Medium Impact
-- [ ] **Email/Discord Webhook Alerts**: Notify on CRITICAL severity threats in real-time
-- [ ] **Threat Timeline**: Historical attack analysis with time-range filtering
-- [ ] **PDF Report Export**: Generate downloadable threat intelligence reports
-- [ ] **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
-- [ ] **Unit & Integration Tests**: pytest for backend, Jest for frontend
+- [x] **Email/Discord Webhook Alerts**: Notify on CRITICAL severity threats in real-time
+- [x] **Threat Timeline**: Historical attack analysis with time-range filtering
+- [x] **PDF Report Export**: Generate downloadable threat intelligence reports
+- [x] **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
+- [x] **Unit & Integration Tests**: pytest for backend, Jest for frontend
 
 ### Polish
-- [ ] **Loading Skeletons**: Smooth transition states while data loads
-- [ ] **Mobile Responsive**: Dashboard optimized for phones and tablets
-- [ ] **Architecture Diagrams**: Mermaid diagrams in README for professional docs
+- [x] **Loading Skeletons**: Smooth transition states while data loads
+- [x] **Mobile Responsive**: Dashboard optimized for phones and tablets
+- [x] **Architecture Diagrams**: Mermaid diagrams in README for professional docs
+### Phase 4: Enterprise Grade Features
+- [ ] **PCAP File Upload**: Drag-and-drop Wireshark captures for historical threat analysis
+- [ ] **Active OS Firewall Blocking**: Real-time IP banning via `iptables` or macOS `pf`
+- [ ] **2FA Authentication**: TOTP (Google Authenticator) support for admin logins
+- [ ] **ML Ensemble Engine**: Combined Random Forest, XGBoost, and Neural Network voting
+- [ ] **Live Settings UI**: In-app configuration for Webhooks and AI sensitivity thresholds

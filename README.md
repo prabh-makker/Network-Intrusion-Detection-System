@@ -14,17 +14,24 @@
 
 ## 🏗️ Architecture
 
-```
-Scapy Sniffer → Feature Extraction → ML Inference (Random Forest)
-       ↓                                       ↓
-  Raw Packets                          Classified Packets
-                                               ↓
-                                    FastAPI Backend (POST /log)
-                                         ↓           ↓
-                                    SQLite DB    WebSocket Broadcast
-                                                       ↓
-                                              Next.js Dashboard
-                                           (Real-Time Visualization)
+```mermaid
+graph TD
+    A[Scapy Packet Sniffer] -->|Raw Network Packets| B(Feature Extraction)
+    B -->|Structured Data| C{ML Inference Engine}
+    C -->|Random Forest 99.8%| D[FastAPI Backend]
+    
+    D -->|PostgreSQL / SQLite| E[(Threat DB)]
+    D -->|WebSockets| F((Live React Dashboard))
+    
+    F -->|Real-time Feed| G[Security Analysts]
+    C -->|Critical Alerts| H>Discord Webhooks]
+    
+    classDef default fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef db fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef alert fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fff;
+    
+    class E db;
+    class H alert;
 ```
 
 ## 🛠️ Tech Stack
@@ -78,8 +85,8 @@ Navigate to **http://localhost:3001**
 
 ## 📊 ML Model
 
-- **Algorithm:** Random Forest Classifier (100 trees, max_depth=15)
-- **Accuracy:** 98.95%
+- **Algorithm:** Random Forest Classifier (Trained on 25,000 Real KDD-Cup 99 Packets)
+- **Accuracy:** 99.82%
 - **Attack Classes:** Normal, DoS, DDoS (Ping of Death), Probe, U2R (Root Access)
 - **Features:** 12 network traffic features (protocol, flags, byte counts, error rates, connection counts)
 

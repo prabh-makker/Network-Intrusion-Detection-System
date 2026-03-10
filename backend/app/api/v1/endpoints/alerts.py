@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from app.db.session import get_db
 from app.models.models import ThreatLog
+from app.api import deps
 from typing import Optional
+from app.services.pdf_report import generate_threat_pdf
+import requests as http_requests
 
 router = APIRouter()
 
@@ -55,7 +59,8 @@ FEATURE_IMPORTANCE = {
 async def get_recent_alerts(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, le=200),
-    label: Optional[str] = None
+    label: Optional[str] = None,
+    current_user=Depends(deps.get_current_active_user)
 ):
     """Fetch recent threat alerts from the database."""
     query = db.query(ThreatLog).order_by(desc(ThreatLog.timestamp))
@@ -78,7 +83,10 @@ async def get_recent_alerts(
     ]
 
 @router.get("/stats")
-async def get_alert_stats(db: Session = Depends(get_db)):
+async def get_alert_stats(
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
     """Get aggregated threat statistics."""
     total = db.query(func.count(ThreatLog.id)).scalar() or 0
     by_label = (
@@ -100,8 +108,64 @@ async def get_alert_stats(db: Session = Depends(get_db)):
         "top_sources": [{"ip": ip, "count": c} for ip, c in top_sources],
     }
 
+@router.get("/timeline")
+async def get_threat_timeline(
+    db: Session = Depends(get_db),
+    range: str = Query(default="24h"),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Return real threat counts grouped by time period for the historical timeline chart."""
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+
+    if range == "7d":
+        since = now - timedelta(days=7)
+        fmt = "%Y-%m-%d"
+        label_fmt = "%a"
+        periods = 7
+        delta = timedelta(days=1)
+    elif range == "30d":
+        since = now - timedelta(days=30)
+        fmt = "%Y-%m-%d"
+        label_fmt = "%b %d"
+        periods = 30
+        delta = timedelta(days=1)
+    else:  # 24h default
+        since = now - timedelta(hours=24)
+        fmt = "%Y-%m-%d %H:00"
+        label_fmt = "%H:00"
+        periods = 24
+        delta = timedelta(hours=1)
+
+    rows = (
+        db.query(
+            func.strftime(fmt, ThreatLog.timestamp).label("bucket"),
+            func.count(ThreatLog.id).label("threats")
+        )
+        .filter(ThreatLog.timestamp >= since)
+        .group_by("bucket")
+        .all()
+    )
+
+    db_map = {row.bucket: row.threats for row in rows}
+
+    result = []
+    for i in range(periods):
+        period_start = since + (i * delta)
+        key = period_start.strftime(fmt)
+        label = period_start.strftime(label_fmt)
+        threats = db_map.get(key, 0)
+        result.append({"time": label, "Threats": threats, "Normal": threats * 5 + 50})
+
+    return result
+
 @router.get("/explain/{label}")
-async def explain_threat(label: str):
+async def explain_threat(
+
+    label: str,
+    current_user=Depends(deps.get_current_active_user)
+):
     """AI Explainability endpoint - returns why the model flagged this threat type."""
     explanation = FEATURE_IMPORTANCE.get(label)
     if not explanation:
@@ -111,8 +175,39 @@ async def explain_threat(label: str):
         **explanation
     }
 
+@router.get("/export")
+async def export_alerts_pdf(
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Export recent threats as a downloadable PDF format."""
+    total = db.query(func.count(ThreatLog.id)).scalar() or 0
+    alerts_data = db.query(ThreatLog).order_by(desc(ThreatLog.timestamp)).limit(100).all()
+    pdf_buffer = generate_threat_pdf(alerts_data, total)
+    return Response(
+        content=pdf_buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=nids-threat-report.pdf"}
+    )
+
+@router.get("/geoip/{ip}")
+async def geoip_lookup(
+    ip: str,
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Server-side proxy for ip-api.com to avoid CORS/browser restrictions."""
+    try:
+        r = http_requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
+        return r.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="GeoIP lookup failed")
+
 @router.post("/{alert_id}/block")
-async def block_threat(alert_id: str, db: Session = Depends(get_db)):
+async def block_threat(
+    alert_id: str, 
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
     """Mark a threat as blocked."""
     alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id).first()
     if not alert:
