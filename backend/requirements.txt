@@ -11,3 +11,13 @@ python-dotenv
 sqlalchemy
 psycopg2-binary
 alembic
+pyjwt
+passlib
+bcrypt
+python-multipart
+
+reportlab
+pytest
+httpx
+pytest-asyncio
+requests

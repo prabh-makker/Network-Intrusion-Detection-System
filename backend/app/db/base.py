@@ -1,2 +1,2 @@
 from app.db.base_class import Base
-from app.models.models import ThreatLog
+from app.models.models import ThreatLog, User
