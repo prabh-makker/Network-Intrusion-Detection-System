@@ -129,8 +129,8 @@ export default function NIDSDashboard() {
       console.log("WebSocket disconnected");
     };
 
-    ws.onerror = (err) => {
-      console.error("WS error", err);
+    ws.onerror = () => {
+      // WS unavailable when sniffer is not running
     };
 
     return () => {
