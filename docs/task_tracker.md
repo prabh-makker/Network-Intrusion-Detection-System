@@ -58,7 +58,7 @@
 - [x] **Architecture Diagrams**: Mermaid diagrams in README for professional docs
 ### Phase 4: Enterprise Grade Features
 - [ ] **PCAP File Upload**: Drag-and-drop Wireshark captures for historical threat analysis
-- [ ] **Active OS Firewall Blocking**: Real-time IP banning via `iptables` or macOS `pf`
+- [x] **Active OS Firewall Blocking**: Real-time IP banning via `iptables` or macOS `pf`
 - [ ] **2FA Authentication**: TOTP (Google Authenticator) support for admin logins
 - [ ] **ML Ensemble Engine**: Combined Random Forest, XGBoost, and Neural Network voting
 - [ ] **Live Settings UI**: In-app configuration for Webhooks and AI sensitivity thresholds

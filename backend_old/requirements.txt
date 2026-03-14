@@ -13,7 +13,7 @@ psycopg2-binary
 alembic
 pyjwt
 passlib
-bcrypt==4.0.1
+bcrypt
 python-multipart
 
 reportlab
