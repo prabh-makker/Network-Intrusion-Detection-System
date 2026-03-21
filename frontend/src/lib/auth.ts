@@ -35,7 +35,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${token}`);
 
-    console.log(`DEBUG: fetchWithAuth calling: ${url}`);
     const response = await fetch(url, {
         ...options,
         headers,

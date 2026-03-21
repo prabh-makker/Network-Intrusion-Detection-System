@@ -100,14 +100,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
         await websocket.close(code=4001, reason="Missing token")
         return
     
-    print(f"DEBUG: WebSocket connection attempt with token: {token[:10]}...")
     payload = decode_token(token)
     if not payload:
-        print("DEBUG: WebSocket auth failed: Invalid or expired token")
         await websocket.close(code=4003, reason="Invalid or expired token")
         return
-
-    print(f"DEBUG: WebSocket authenticated for user: {payload.get('sub')}")
     await manager.connect(websocket)
     try:
         while True:

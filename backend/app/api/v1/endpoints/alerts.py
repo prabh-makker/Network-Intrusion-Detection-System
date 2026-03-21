@@ -116,44 +116,55 @@ async def get_threat_timeline(
 ):
     """Return real threat counts grouped by time period for the historical timeline chart."""
     from datetime import datetime, timezone, timedelta
+    import builtins
 
     now = datetime.now(timezone.utc)
 
-    if range == "7d":
+    time_range = range  # Avoid shadowing builtin range
+
+    if time_range == "7d":
         since = now - timedelta(days=7)
-        fmt = "%Y-%m-%d"
         label_fmt = "%a"
         periods = 7
         delta = timedelta(days=1)
-    elif range == "30d":
+    elif time_range == "30d":
         since = now - timedelta(days=30)
-        fmt = "%Y-%m-%d"
         label_fmt = "%b %d"
         periods = 30
         delta = timedelta(days=1)
     else:  # 24h default
         since = now - timedelta(hours=24)
-        fmt = "%Y-%m-%d %H:00"
         label_fmt = "%H:00"
         periods = 24
         delta = timedelta(hours=1)
 
+    # Get all threats in the range
     rows = (
-        db.query(
-            func.strftime(fmt, ThreatLog.timestamp).label("bucket"),
-            func.count(ThreatLog.id).label("threats")
-        )
+        db.query(ThreatLog)
         .filter(ThreatLog.timestamp >= since)
-        .group_by("bucket")
         .all()
     )
 
-    db_map = {row.bucket: row.threats for row in rows}
+    # Group threats by period
+    db_map = {}
+    for row in rows:
+        if time_range == "7d":
+            key = row.timestamp.strftime("%Y-%m-%d")
+        elif time_range == "30d":
+            key = row.timestamp.strftime("%Y-%m-%d")
+        else:  # 24h
+            key = row.timestamp.strftime("%Y-%m-%d %H:00")
+        db_map[key] = db_map.get(key, 0) + 1
 
     result = []
-    for i in range(periods):
+    for i in builtins.range(periods):
         period_start = since + (i * delta)
-        key = period_start.strftime(fmt)
+        if time_range == "7d":
+            key = period_start.strftime("%Y-%m-%d")
+        elif time_range == "30d":
+            key = period_start.strftime("%Y-%m-%d")
+        else:  # 24h
+            key = period_start.strftime("%Y-%m-%d %H:00")
         label = period_start.strftime(label_fmt)
         threats = db_map.get(key, 0)
         result.append({"time": label, "Threats": threats, "Normal": threats * 5 + 50})

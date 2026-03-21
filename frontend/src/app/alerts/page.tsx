@@ -1,28 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   ShieldAlert,
   ShieldCheck,
-  ChevronRight,
   Search,
-  ArrowLeft,
   Ban,
   Info,
-  BarChart3,
-  Sun,
-  Moon,
   AlertTriangle,
   Skull,
   Radar,
   Lock,
-  LogOut,
-  DownloadCloud
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { fetchWithAuth, getToken, removeToken } from '@/lib/auth';
+  Download,
+  Zap,
+  Clock,
+  FileText,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { fetchWithAuth, getToken } from "@/lib/auth";
+import { getApiUrl } from "@/lib/api";
+import { useToast } from "@/components/Toast";
+import { useTheme } from "@/context/ThemeContext";
 
 type Alert = {
   id: string;
@@ -49,44 +48,42 @@ type Explanation = {
   mitigation: string;
 };
 
-const THREAT_ICONS: Record<string, React.ReactNode> = {
-  "DoS": <Skull size={18} />,
-  "DDoS (Ping of Death)": <Skull size={18} />,
-  "Probe": <Radar size={18} />,
-  "U2R (Root Access)": <Lock size={18} />
+const THREAT_COLORS: Record<string, string> = {
+  DoS: "#06b6d4",
+  "DDoS (Ping of Death)": "#ec4899",
+  Probe: "#f59e0b",
+  "U2R (Root Access)": "#ef4444",
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  "CRITICAL": "text-rose-500 bg-rose-500/15 border-rose-500/30",
-  "HIGH": "text-amber-500 bg-amber-500/15 border-amber-500/30",
-  "MEDIUM": "text-blue-500 bg-blue-500/15 border-blue-500/30",
+const THREAT_ICONS: Record<string, React.ReactNode> = {
+  DoS: <Zap size={20} />,
+  "DDoS (Ping of Death)": <Skull size={20} />,
+  Probe: <Radar size={20} />,
+  "U2R (Root Access)": <Lock size={20} />,
+};
+
+const SEVERITY_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+  CRITICAL: { color: "#ef4444", bg: "#ef444420", label: "CRITICAL" },
+  HIGH: { color: "#f59e0b", bg: "#f59e0b20", label: "HIGH" },
+  MEDIUM: { color: "#3b82f6", bg: "#3b82f620", label: "MEDIUM" },
 };
 
 export default function AlertsPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
-  const [isLightMode, setIsLightMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrl = getApiUrl();
 
-  // Auth Check
   useEffect(() => {
-    if (!getToken()) {
-      router.push('/login');
-    }
+    if (!getToken()) router.push("/login");
   }, [router]);
-
-  useEffect(() => {
-    if (isLightMode) {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }, [isLightMode]);
 
   // Fetch alerts
   useEffect(() => {
@@ -98,12 +95,12 @@ export default function AlertsPage() {
         const res = await fetchWithAuth(url);
         const data = await res.json();
         setAlerts(data);
-      } catch (e) { console.error(e); }
+      } catch {}
     };
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 3000); // Poll every 3s
+    const interval = setInterval(fetchAlerts, 3000);
     return () => clearInterval(interval);
-  }, [selectedLabel]);
+  }, [selectedLabel, apiUrl]);
 
   // Fetch stats
   useEffect(() => {
@@ -112,293 +109,318 @@ export default function AlertsPage() {
         const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`);
         const data = await res.json();
         setStats(data);
-      } catch (e) { console.error(e); }
+      } catch {}
     };
     fetchStats();
     const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [apiUrl]);
 
-  // Fetch explanation when label selected
   const fetchExplanation = async (label: string) => {
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/explain/${encodeURIComponent(label)}`);
       const data = await res.json();
       setExplanation(data);
-    } catch (e) { console.error(e); }
+    } catch {
+      toast("error", "Failed to load explanation");
+    }
   };
 
   const handleBlock = async (alertId: string) => {
     try {
-      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/${alertId}/block`, { method: 'POST' });
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/${alertId}/block`, { method: "POST" });
       const data = await res.json();
-
-      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, is_blocked: true } : a));
+      setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, is_blocked: true } : a)));
 
       if (data.firewall_active) {
-        alert(`🛡️ ACTIVE DEFENSE: IP ${data.ip} has been permanently banned from the OS firewall.`);
+        toast("success", "IP Blocked", `${data.ip} has been banned via firewall`);
+      } else {
+        toast("info", "Threat Marked Blocked", `${data.ip} flagged in database`);
       }
-    } catch (e) {
-      console.error(e);
-      alert("Failed to block threat. Check server permissions.");
+    } catch {
+      toast("error", "Block Failed", "Could not block IP");
     }
   };
-
 
   const handleExportPDF = async () => {
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/export`);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nids-threat-report.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error("Failed to export PDF:", e);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "nids-threat-report.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast("success", "PDF Exported", "Threat report downloaded");
+      }
+    } catch {
+      toast("error", "Export Failed");
     }
   };
 
-  const filteredAlerts = alerts.filter(a =>
-    a.src_ip.includes(searchTerm) ||
-    a.dst_ip.includes(searchTerm) ||
-    a.label.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredAlerts = alerts.filter(
+    (a) =>
+      a.src_ip.includes(searchTerm) ||
+      a.dst_ip.includes(searchTerm) ||
+      a.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen p-6 md:p-8 flex flex-col gap-6">
-
+    <div className="min-h-screen w-full flex flex-col">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--glass-border)] pb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="glass-panel p-3 rounded-xl hover:scale-105 transition-transform">
-            <ArrowLeft size={20} className="text-[var(--muted)]" />
-          </Link>
+      <div className={`border-b backdrop-blur-xl px-6 py-6 ${isDark ? "border-purple-500/20 bg-gradient-to-r from-purple-900/10 via-transparent to-blue-900/10" : "border-purple-400/20 bg-purple-950/5"}`}>
+        <div className="max-w-7xl mx-auto flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-rose-400 to-orange-500 bg-clip-text text-transparent">
-              Threat Alerts
-            </h1>
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mt-1">
-              AI-Powered Threat Analysis & Explainability
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsLightMode(!isLightMode)}
-            className="glass-panel p-3 rounded-xl hover:bg-slate-800/10 transition-colors"
-          >
-            {isLightMode ? <Moon size={20} className="text-slate-700" /> : <Sun size={20} className="text-amber-400" />}
-          </button>
-
-          <button
-            onClick={() => {
-              removeToken();
-              router.push('/login');
-            }}
-            className="glass-panel p-3 rounded-xl text-[var(--muted)] hover:text-rose-400 transition-colors flex items-center gap-2"
-            title="Sign Out"
-          >
-            <LogOut size={20} />
-          </button>
-
-          <button
-            onClick={handleExportPDF}
-            className="glass-panel px-4 py-3 rounded-xl text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2"
-          >
-            <DownloadCloud size={16} /> Export PDF
-          </button>
-
-          <Link href="/dashboard" className="glass-panel px-4 py-3 rounded-xl text-sm font-bold text-[var(--muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-2">
-            <BarChart3 size={16} /> Dashboard
-          </Link>
-        </div>
-      </header>
-
-      {/* Stats Bar */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="glass-panel p-4 rounded-2xl text-center">
-            <div className="text-2xl font-black text-rose-500">{stats.total_threats}</div>
-            <div className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest mt-1">Total Threats</div>
-          </div>
-          {Object.entries(stats.by_label).map(([label, count]) => (
-            <button
-              key={label}
-              onClick={() => { setSelectedLabel(selectedLabel === label ? null : label); fetchExplanation(label); }}
-              className={`glass-panel p-4 rounded-2xl text-center cursor-pointer transition-all hover:scale-105 ${selectedLabel === label ? 'ring-2 ring-blue-500' : ''}`}
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-300"
             >
-              <div className="text-2xl font-black text-[var(--foreground)]">{count}</div>
-              <div className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest mt-1 truncate">{label}</div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-
-        {/* Left: Alert List */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          {/* Search */}
-          <div className="glass-panel px-4 py-3 rounded-xl flex items-center gap-3">
-            <Search size={16} className="text-[var(--muted)]" />
-            <input
-              type="text"
-              placeholder="Search by IP, label..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--foreground)] placeholder-[var(--muted)]"
-            />
-            {selectedLabel && (
-              <button onClick={() => setSelectedLabel(null)} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md">
-                ✕ {selectedLabel}
-              </button>
-            )}
+              Threat Alerts
+            </motion.h1>
+            <p className={`mt-2 text-sm ${isDark ? "text-purple-200" : "text-purple-800"}`}>AI-powered threat analysis and explainability</p>
           </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleExportPDF}
+            className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-medium transition-all flex items-center gap-2"
+          >
+            <Download size={18} /> Export PDF
+          </motion.button>
+        </div>
+      </div>
 
-          {/* Alert Cards */}
-          <div className="flex-1 overflow-y-auto max-h-[60vh] space-y-3 pr-1">
-            <AnimatePresence>
-              {filteredAlerts.length === 0 ? (
-                <div className="text-[var(--muted)] text-sm text-center py-16 glass-panel rounded-2xl">
-                  <ShieldCheck size={48} className="mx-auto mb-4 text-emerald-500" />
-                  No threats detected yet.
-                </div>
-              ) : filteredAlerts.map((alert, i) => (
-                <motion.div
-                  key={alert.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.02 }}
-                  className={`glass-panel p-4 rounded-xl flex items-center gap-4 group ${alert.is_blocked ? 'opacity-50' : ''}`}
-                >
-                  {/* Icon */}
-                  <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500 shrink-0">
-                    {THREAT_ICONS[alert.label] || <AlertTriangle size={18} />}
-                  </div>
+      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+        {/* Stats Cards */}
+        {stats && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <motion.div
+              className={`rounded-xl p-4 text-center border ${isDark ? "bg-gradient-to-br from-red-900/20 to-red-900/5 border-red-500/30" : "bg-red-50 border-red-200"}`}
+              whileHover={{ scale: 1.02 }}
+            >
+              <p className="text-3xl font-bold text-red-400">{stats.total_threats}</p>
+              <p className={`text-xs mt-2 font-medium uppercase ${isDark ? "text-purple-300" : "text-purple-800"}`}>Total Threats</p>
+            </motion.div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-[var(--foreground)]">{alert.label}</span>
-                      <span className="text-xs text-[var(--muted)]">{alert.confidence}%</span>
-                      {alert.is_blocked && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">BLOCKED</span>}
-                    </div>
-                    <div className="text-xs text-[var(--muted)] font-mono flex gap-3">
-                      <span>{alert.src_ip} → {alert.dst_ip}</span>
-                      <span>{alert.protocol}</span>
-                    </div>
-                  </div>
+            {Object.entries(stats.by_label).map(([label, count]) => (
+              <motion.button
+                key={label}
+                onClick={() => {
+                  setSelectedLabel(selectedLabel === label ? null : label);
+                  fetchExplanation(label);
+                }}
+                whileHover={{ scale: 1.02 }}
+                className={`rounded-xl p-4 text-center transition-all border ${
+                  selectedLabel === label
+                    ? isDark ? "ring-2 ring-purple-500 bg-purple-900/30 border-purple-500/50" : "ring-2 ring-purple-400 bg-purple-50 border-purple-300"
+                    : isDark ? "bg-gradient-to-br from-purple-900/20 to-purple-900/5 border-purple-500/30 hover:border-purple-500/50" : "bg-purple-950/10 border-purple-400/20 hover:border-purple-400/40"
+                }`}
+              >
+                <p className={`text-3xl font-bold ${isDark ? "text-purple-300" : "text-purple-600"}`}>{count}</p>
+                <p className={`text-xs mt-2 font-medium uppercase truncate ${isDark ? "text-purple-300" : "text-purple-800"}`}>{label}</p>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => fetchExplanation(alert.label)}
-                      className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
-                      title="Explain"
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Alert List */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Search Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`relative rounded-xl border backdrop-blur-xl ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-400/20 bg-purple-950/10"}`}
+            >
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Search size={18} className="text-purple-400" />
+                <input
+                  type="text"
+                  placeholder="Search by IP or threat type..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`bg-transparent border-none outline-none flex-1 ${isDark ? "text-white placeholder-purple-400" : "text-purple-950 placeholder-purple-400"}`}
+                />
+                {selectedLabel && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    onClick={() => setSelectedLabel(null)}
+                    className="px-3 py-1 rounded-lg bg-purple-600/40 text-purple-300 hover:text-purple-100 text-xs font-medium transition-colors"
+                  >
+                    ✕ {selectedLabel}
+                  </motion.button>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Alert Cards */}
+            <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+              <AnimatePresence>
+                {filteredAlerts.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`text-center py-16 rounded-xl border ${isDark ? "border-purple-500/20 bg-gradient-to-br from-purple-900/10 to-blue-900/5" : "border-purple-400/20 bg-purple-950/10"}`}
+                  >
+                    <ShieldCheck size={48} className="mx-auto text-emerald-400 opacity-50 mb-3" />
+                    <p className={isDark ? "text-purple-300" : "text-purple-800"}>No threats detected</p>
+                  </motion.div>
+                ) : (
+                  filteredAlerts.map((alert, i) => (
+                    <motion.div
+                      key={alert.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                      className={`rounded-xl border backdrop-blur-xl p-4 transition-all group ${isDark ? "border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-blue-900/10 hover:border-purple-500/50" : "border-slate-200 bg-white/70 hover:border-purple-300"} ${
+                        alert.is_blocked ? "opacity-50" : ""
+                      }`}
                     >
-                      <Info size={14} />
-                    </button>
-                    {!alert.is_blocked && (
-                      <button
-                        onClick={() => handleBlock(alert.id)}
-                        className="p-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors"
-                        title="Block IP"
-                      >
-                        <Ban size={14} />
-                      </button>
-                    )}
-                  </div>
+                      <div className="flex items-start gap-4">
+                        {/* Icon */}
+                        <div
+                          className="p-3 rounded-lg shrink-0"
+                          style={{
+                            background: `${THREAT_COLORS[alert.label] || "#8b5cf6"}20`,
+                            color: THREAT_COLORS[alert.label] || "#8b5cf6",
+                          }}
+                        >
+                          {THREAT_ICONS[alert.label] || <AlertTriangle />}
+                        </div>
 
-                  {/* Timestamp */}
-                  <span className="text-xs text-[var(--muted)] shrink-0 hidden md:block">
-                    {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : '—'}
-                  </span>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className={`font-bold ${isDark ? "text-white" : "text-purple-950"}`}>{alert.label}</span>
+                            <span className="text-xs bg-purple-500/30 text-purple-200 px-2 py-1 rounded-full">
+                              {alert.confidence}%
+                            </span>
+                            {alert.is_blocked && (
+                              <span className="text-xs bg-emerald-500/30 text-emerald-300 px-2 py-1 rounded-full flex items-center gap-1">
+                                <Ban size={12} /> BLOCKED
+                              </span>
+                            )}
+                          </div>
+                          <div className={`text-sm font-mono mb-2 ${isDark ? "text-purple-300" : "text-purple-800"}`}>
+                            {alert.src_ip} → {alert.dst_ip}
+                          </div>
+                          <div className={`flex items-center gap-4 text-xs ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+                            <span>{alert.protocol}</span>
+                            <span className="flex items-center gap-1">
+                              <Clock size={12} /> {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : "—"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => fetchExplanation(alert.label)}
+                            className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 transition-colors"
+                            title="Show explanation"
+                          >
+                            <Info size={16} />
+                          </motion.button>
+                          {!alert.is_blocked && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleBlock(alert.id)}
+                              className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+                              title="Block IP"
+                            >
+                              <Ban size={16} />
+                            </motion.button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
 
-        {/* Right: AI Explainability Panel */}
-        <div className="glass-panel p-6 rounded-2xl flex flex-col border-t-2 border-t-rose-500/50">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] flex items-center gap-2 mb-6">
-            <Info size={16} className="text-blue-500" />
-            AI Explainability
-          </h3>
+          {/* AI Explainability Panel */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-2xl border backdrop-blur-xl p-6 h-fit sticky top-6 ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-400/20 bg-purple-950/10"}`}
+          >
+            <h3 className={`text-lg font-bold flex items-center gap-2 mb-4 ${isDark ? "text-white" : "text-purple-950"}`}>
+              <FileText size={20} className="text-cyan-400" />
+              Threat Analysis
+            </h3>
 
-          {explanation ? (
-            <div className="space-y-5 flex-1 overflow-y-auto">
-              {/* Header */}
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
-                    {THREAT_ICONS[explanation.label] || <AlertTriangle size={20} />}
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-black text-[var(--foreground)]">{explanation.label}</h4>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${SEVERITY_COLORS[explanation.severity] || 'text-slate-400'}`}>
+            {explanation ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                {/* Header */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className={`font-semibold ${isDark ? "text-white" : "text-purple-950"}`}>{explanation.label}</h4>
+                    <span
+                      className="text-xs px-2 py-1 rounded-lg font-bold"
+                      style={{
+                        color: SEVERITY_CONFIG[explanation.severity]?.color,
+                        background: SEVERITY_CONFIG[explanation.severity]?.bg,
+                      }}
+                    >
                       {explanation.severity}
                     </span>
                   </div>
+                  <p className={`text-sm ${isDark ? "text-purple-300" : "text-purple-800"}`}>{explanation.description}</p>
                 </div>
-                <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">
-                  {explanation.description}
-                </p>
-              </div>
 
-              {/* Key Indicators */}
-              <div>
-                <h5 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Key Indicators (Why AI Flagged This)</h5>
+                {/* Key Indicators */}
                 <div className="space-y-2">
+                  <h5 className={`text-sm font-semibold ${isDark ? "text-purple-200" : "text-purple-900"}`}>Key Indicators</h5>
                   {explanation.key_indicators.map((ind, i) => (
-                    <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold font-mono text-[var(--foreground)]">{ind.feature}</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${SEVERITY_COLORS[ind.impact] || 'text-slate-400'}`}>
+                    <div key={i} className={`rounded-lg p-2 border ${isDark ? "bg-purple-900/40 border-purple-500/20" : "bg-purple-900/10 border-purple-400/20"}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-mono text-cyan-300">{ind.feature}</span>
+                        <span
+                          className="text-xs font-bold px-1.5 py-0.5 rounded"
+                          style={{
+                            color: ind.impact === "CRITICAL" ? "#ef4444" : ind.impact === "HIGH" ? "#f59e0b" : "#3b82f6",
+                            background:
+                              ind.impact === "CRITICAL"
+                                ? "#ef444420"
+                                : ind.impact === "HIGH"
+                                  ? "#f59e0b20"
+                                  : "#3b82f620",
+                          }}
+                        >
                           {ind.impact}
                         </span>
                       </div>
-                      <p className="text-xs text-[var(--muted)]">{ind.detail}</p>
+                      <p className={`text-xs ${isDark ? "text-purple-300" : "text-purple-800"}`}>{ind.detail}</p>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Mitigation */}
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-                <h5 className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-2 flex items-center gap-2">
-                  <ShieldCheck size={14} /> Recommended Mitigation
-                </h5>
-                <p className="text-sm text-[var(--foreground)] leading-relaxed">{explanation.mitigation}</p>
+                {/* Mitigation */}
+                <div>
+                  <h5 className={`text-sm font-semibold mb-2 ${isDark ? "text-purple-200" : "text-purple-900"}`}>Recommended Action</h5>
+                  <p className={`text-xs p-3 rounded-lg border ${isDark ? "text-purple-300 bg-purple-900/40 border-purple-500/20" : "text-slate-500 bg-slate-50 border-slate-200"}`}>
+                    {explanation.mitigation}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="text-center py-8">
+                <AlertTriangle size={32} className="mx-auto text-purple-400 opacity-30 mb-2" />
+                <p className={`text-sm ${isDark ? "text-purple-300" : "text-purple-800"}`}>Select a threat type to view analysis</p>
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[var(--muted)]">
-              <Info size={48} className="mb-4 opacity-30" />
-              <p className="text-sm text-center">Select a threat type or click the <strong>ℹ️</strong> button on any alert to see AI explanation.</p>
-            </div>
-          )}
-
-          {/* Top Attackers */}
-          {stats && stats.top_sources.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-[var(--glass-border)]">
-              <h5 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Top Threat Sources</h5>
-              <div className="space-y-2">
-                {stats.top_sources.slice(0, 5).map((s, i) => (
-                  <div key={i} className="flex justify-between items-center text-sm">
-                    <span className="font-mono text-[var(--foreground)]">{s.ip}</span>
-                    <span className="text-xs bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded-full font-bold">
-                      {s.count} hits
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </motion.div>
         </div>
       </div>
     </div>

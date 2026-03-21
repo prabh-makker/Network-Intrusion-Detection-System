@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # DATABASE (Defaults to SQLite for seamless local execution)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./nids.db")
     
+    # SMTP for OTP emails
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "")
+
     # ALERTS
     DISCORD_WEBHOOK_URL: Optional[str] = os.getenv("DISCORD_WEBHOOK_URL")
 
