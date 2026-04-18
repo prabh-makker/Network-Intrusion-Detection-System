@@ -40,16 +40,7 @@ const AuroraCanvas = () => {
       { color: [99, 60, 180], speed: 0.22, amp: 75, yBase: 0.85, width: 130, phase: 5 },      // indigo-wine
     ];
 
-    // Data pulse dots traveling along ribbons
-    const pulses: { ribbon: number; t: number; speed: number; size: number }[] = [];
-    for (let i = 0; i < 40; i++) {
-      pulses.push({
-        ribbon: Math.floor(Math.random() * ribbons.length),
-        t: Math.random(),
-        speed: 0.001 + Math.random() * 0.003,
-        size: 1.5 + Math.random() * 2.5,
-      });
-    }
+    // Data pulse dots removed by request
 
     const animate = () => {
       ctx.clearRect(0, 0, w(), h());
@@ -103,31 +94,7 @@ const AuroraCanvas = () => {
         ctx.stroke();
       });
 
-      // Draw data pulses
-      pulses.forEach((p) => {
-        p.t += p.speed;
-        if (p.t > 1) p.t = 0;
-
-        const r = ribbons[p.ribbon];
-        const x = p.t * w();
-        const progress = p.t;
-        const wave1 = Math.sin(progress * 4 + time.current * r.speed + r.phase) * r.amp;
-        const wave2 = Math.sin(progress * 2.5 + time.current * r.speed * 0.7 + r.phase) * r.amp * 0.5;
-        const y = h() * r.yBase + wave1 + wave2;
-
-        const glowGrad = ctx.createRadialGradient(x, y, 0, x, y, p.size * 6);
-        glowGrad.addColorStop(0, `rgba(${r.color.join(",")}, 0.6)`);
-        glowGrad.addColorStop(1, `rgba(${r.color.join(",")}, 0)`);
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(x, y, p.size * 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = `rgba(${r.color.join(",")}, 0.9)`;
-        ctx.beginPath();
-        ctx.arc(x, y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      // Draw data pulses removed by request
 
       requestAnimationFrame(animate);
     };
@@ -200,11 +167,9 @@ const ThreatFeed = () => {
             transition={{ duration: 0.4 }}
             className="flex items-center gap-2 py-1 text-[13px]"
           >
-            <motion.div
+            <div
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: t.color }}
-              animate={isActive ? { scale: [1, 1.8, 1] } : {}}
-              transition={{ duration: 1, repeat: Infinity }}
             />
             <Icon size={13} style={{ color: t.color }} className="flex-shrink-0" />
             <span className="text-slate-300 truncate">{t.text}</span>
@@ -433,13 +398,7 @@ export default function LoginPage() {
       {/* ===== FULL-SCREEN AURORA BACKGROUND ===== */}
       <AuroraCanvas />
       <DataStream />
-      <RadarPulse />
-
-      {/* Orbs — wine/blue/purple */}
-      <div className="absolute top-[-15%] left-[-8%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: "rgba(120,40,80,0.12)", filter: "blur(120px)", zIndex: 0, animation: "orbF1 14s infinite ease-in-out" }} />
-      <div className="absolute bottom-[-15%] right-[-8%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: "rgba(139,92,246,0.10)", filter: "blur(120px)", zIndex: 0, animation: "orbF2 18s infinite ease-in-out" }} />
-      <div className="absolute top-[35%] left-[45%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: "rgba(59,130,246,0.09)", filter: "blur(120px)", zIndex: 0, animation: "orbF3 12s infinite ease-in-out" }} />
-
+      {/* Orbs removed by request */}
       {/* ===== CONTENT OVERLAY — both sides same effect behind =====  */}
       <div className="relative min-h-screen flex flex-col lg:flex-row" style={{ zIndex: 5 }}>
 

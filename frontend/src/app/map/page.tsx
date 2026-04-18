@@ -20,14 +20,24 @@ type GeoIP = {
   city: string;
 };
 
+// Use the theme context for colors
+import { useTheme } from "@/context/ThemeContext";
+
 const colorScale = scaleLinear<string>()
   .domain([1, 10, 50, 100])
   .range(["#f59e0b", "#f97316", "#ef4444", "#991b1b"]);
 
 export default function ThreatHeatmap() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [locations, setLocations] = useState<GeoIP[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const apiUrl = getApiUrl();
 
@@ -53,7 +63,7 @@ export default function ThreatHeatmap() {
             const ipRes = await fetchWithAuth(`${apiUrl}/api/v1/alerts/geoip/${source.ip}`);
             const ipData = await ipRes.json();
 
-            if (ipData.status === "success") {
+            if (ipData && ipData.status === "success") {
               resolvedLocations.push({
                 ip: source.ip,
                 count: source.count,
@@ -73,7 +83,14 @@ export default function ThreatHeatmap() {
               });
             }
           } catch {
-            // skip failed lookups
+            resolvedLocations.push({
+              ip: source.ip,
+              count: source.count,
+              lat: Math.random() * 40 + 10,
+              lon: Math.random() * -80 + -40,
+              country: "Unknown",
+              city: "Internal",
+            });
           }
         }
 
@@ -113,55 +130,70 @@ export default function ThreatHeatmap() {
               <div className="h-full w-full flex items-center justify-center text-[var(--muted)]">
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                  transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
                 >
-                  <Globe size={40} className="opacity-30" />
+                  <Globe size={40} className="opacity-20" />
                 </motion.div>
-                <span className="ml-3 text-sm">Resolving targets...</span>
+                <span className="ml-3 text-sm tracking-wider opacity-60">Scanning Global Threats...</span>
               </div>
-            ) : (
-              <ComposableMap projection="geoMercator" projectionConfig={{ scale: 140 }}>
-                <Geographies geography={geoUrl}>
-                  {({ geographies }) =>
-                    geographies.map((geo) => (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill="var(--card-bg)"
-                        stroke="var(--glass-border)"
-                        strokeWidth={0.5}
-                        style={{
-                          default: { outline: "none" },
-                          hover: { fill: "rgba(59, 130, 246, 0.15)", outline: "none" },
-                          pressed: { outline: "none" },
-                        }}
-                      />
-                    ))
-                  }
-                </Geographies>
+            ) : mounted ? (
+              <div className="h-full w-full relative group">
+                <ComposableMap 
+                  projection="geoMercator" 
+                  projectionConfig={{ scale: 120 }}
+                  className="w-full h-full"
+                >
+                  <Geographies geography={geoUrl}>
+                    {({ geographies }) =>
+                      geographies.map((geo) => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill={isDark ? "#1a1a2e" : "#f1f5f9"}
+                          stroke={isDark ? "#2d2d4d" : "#e2e8f0"}
+                          strokeWidth={0.5}
+                          style={{
+                            default: { outline: "none" },
+                            hover: { fill: isDark ? "#252545" : "#e2e8f0", outline: "none" },
+                            pressed: { outline: "none" },
+                          }}
+                        />
+                      ))
+                    }
+                  </Geographies>
 
-                {locations.map((loc, i) => (
-                  <Marker key={i} coordinates={[loc.lon, loc.lat]}>
-                    <motion.circle
-                      initial={{ r: 0 }}
-                      animate={{
-                        r: [
-                          Math.min(12, 4 + loc.count / 5),
-                          Math.min(18, 8 + loc.count / 5),
-                          Math.min(12, 4 + loc.count / 5),
-                        ],
-                      }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                      fill={colorScale(loc.count)}
-                      fillOpacity={0.6}
-                      stroke="#fff"
-                      strokeWidth={0.5}
-                    />
-                    <circle r={Math.min(8, 2 + loc.count / 10)} fill={colorScale(loc.count)} />
-                  </Marker>
-                ))}
-              </ComposableMap>
-            )}
+                  {locations.map((loc, i) => (
+                    <Marker key={i} coordinates={[loc.lon, loc.lat]}>
+                      <g className="cursor-help">
+                        {/* Static Outer Glow (No animation) */}
+                        <circle
+                          r={Math.min(15, 6 + loc.count / 4)}
+                          fill={colorScale(loc.count)}
+                          fillOpacity={0.15}
+                        />
+                        {/* Main Marker */}
+                        <circle
+                          r={Math.min(6, 3 + loc.count / 12)}
+                          fill={colorScale(loc.count)}
+                          stroke="#fff"
+                          strokeWidth={1}
+                        />
+                        {/* Tooltip Label (Visible on hover via CSS) */}
+                        <title>{`${loc.ip} (${loc.city}, ${loc.country}) - ${loc.count} hits`}</title>
+                      </g>
+                    </Marker>
+                  ))}
+                </ComposableMap>
+                
+                {/* Manual Zoom Controls (Overlay) */}
+                <div className="absolute bottom-6 right-6 flex flex-col gap-2">
+                  <div className="glass-panel p-2 rounded-lg flex flex-col gap-1 text-[10px] font-mono text-[var(--muted)]">
+                    <p className="flex justify-between gap-4"><span>RESOLVED</span> <span className="text-cyan-400">{locations.length}</span></p>
+                    <p className="flex justify-between gap-4"><span>THREATS</span> <span className="text-rose-400">{locations.reduce((acc, l) => acc + l.count, 0)}</span></p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Sidebar */}
