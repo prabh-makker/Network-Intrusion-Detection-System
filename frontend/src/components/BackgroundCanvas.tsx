@@ -390,10 +390,7 @@ export default function BackgroundCanvas() {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
       cancelAnimationFrame(frameId);
-      pulseRings.forEach(p => { scene.remove(p.mesh); p.mesh.geometry.dispose(); (p.mesh.material as THREE.Material).dispose(); });
       meteors.forEach(m => { scene.remove(m.mesh); m.mesh.geometry.dispose(); (m.mesh.material as THREE.Material).dispose(); });
-      orbs.forEach(o => { scene.remove(o); o.geometry.dispose(); (o.material as THREE.Material).dispose(); });
-      rings.forEach(r => { scene.remove(r); r.geometry.dispose(); (r.material as THREE.Material).dispose(); });
       beams.forEach(b => { beamGroup.remove(b.mesh); b.mesh.geometry.dispose(); (b.mesh.material as THREE.Material).dispose(); });
       hexGroup.children.forEach(c => { (c as THREE.Line).geometry.dispose(); });
       scene.remove(particles, dynamicLines, spiralGroup, hexGroup, beamGroup);

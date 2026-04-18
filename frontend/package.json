@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:all": "concurrently \"next dev\" \"cd ../backend && c:\\Users\\khalo\\work\\ai-healthcare-system\\backend\\venv\\Scripts\\python.exe -m uvicorn app.main:app --port 8001\" \"cd ../sniffer && c:\\Users\\khalo\\work\\ai-healthcare-system\\backend\\venv\\Scripts\\python.exe sniffer.py\"",
+    "dev:all": "concurrently \"next dev\" \"cd ../backend && .\\venv\\Scripts\\python.exe -m uvicorn app.main:app --port 8001\" \"cd ../sniffer && ..\\backend\\venv\\Scripts\\python.exe sniffer.py\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
