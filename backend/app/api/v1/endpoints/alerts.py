@@ -167,7 +167,7 @@ async def get_threat_timeline(
             key = period_start.strftime("%Y-%m-%d %H:00")
         label = period_start.strftime(label_fmt)
         threats = db_map.get(key, 0)
-        result.append({"time": label, "Threats": threats, "Normal": threats * 5 + 50})
+        result.append({"time": label, "threats": threats, "traffic": threats * 5 + 50})
 
     return result
 

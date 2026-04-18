@@ -139,68 +139,9 @@ export default function BackgroundCanvas() {
     const dynamicLines = new THREE.LineSegments(lineGeo, lineMat);
     scene.add(dynamicLines);
 
-    // ── Large glowing nebula orbs ──
-    const orbs: THREE.Mesh[] = [];
-    const orbData: { speed: THREE.Vector3; phase: number; baseOpacity: number }[] = [];
+    // Orbs removed by request
 
-    for (let i = 0; i < 7; i++) {
-      const radius = 10 + Math.random() * 18;
-      const orbGeo = new THREE.SphereGeometry(radius, 32, 32);
-      const baseOp = isDark ? 0.07 + Math.random() * 0.04 : 0.12 + Math.random() * 0.06;
-      const orbMat = new THREE.MeshBasicMaterial({
-        color: orbHexColors[i % orbHexColors.length],
-        transparent: true,
-        opacity: baseOp,
-        blending: THREE.AdditiveBlending,
-      });
-      const orb = new THREE.Mesh(orbGeo, orbMat);
-      orb.position.set(
-        (Math.random() - 0.5) * 140,
-        (Math.random() - 0.5) * 100,
-        (Math.random() - 0.5) * 50 - 20
-      );
-      scene.add(orb);
-      orbs.push(orb);
-      orbData.push({
-        speed: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.012,
-          (Math.random() - 0.5) * 0.012,
-          (Math.random() - 0.5) * 0.004
-        ),
-        phase: Math.random() * Math.PI * 2,
-        baseOpacity: baseOp,
-      });
-    }
-
-    // ── Floating rotating rings ──
-    const rings: THREE.Mesh[] = [];
-    const ringData: { rotSpeed: THREE.Vector3; orbitRadius: number; orbitSpeed: number; phase: number }[] = [];
-
-    for (let i = 0; i < 5; i++) {
-      const ringGeo = new THREE.TorusGeometry(12 + i * 6, 0.2 + Math.random() * 0.15, 16, 100);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: orbHexColors[(i + 2) % orbHexColors.length],
-        transparent: true,
-        opacity: isDark ? 0.15 : 0.25,
-        blending: THREE.AdditiveBlending,
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.position.set(
-        (Math.random() - 0.5) * 80,
-        (Math.random() - 0.5) * 50,
-        -20 + i * -8
-      );
-      ring.rotation.x = Math.random() * Math.PI;
-      ring.rotation.y = Math.random() * Math.PI;
-      scene.add(ring);
-      rings.push(ring);
-      ringData.push({
-        rotSpeed: new THREE.Vector3(0.001 + Math.random() * 0.003, 0.002 + Math.random() * 0.002, 0.0005),
-        orbitRadius: 15 + Math.random() * 35,
-        orbitSpeed: 0.0002 + Math.random() * 0.0004,
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
+    // Rings removed by request
 
     // ── Spiral galaxy arms ──
     const spiralGroup = new THREE.Group();
@@ -266,29 +207,7 @@ export default function BackgroundCanvas() {
       meteors.push({ mesh: meteor, vel: dir.multiplyScalar(0.6 + Math.random() * 0.4), life: 0, maxLife: 80 + Math.random() * 60 });
     };
 
-    // ── Pulse waves ──
-    const pulseRings: { mesh: THREE.Mesh; life: number; maxLife: number }[] = [];
-    let pulseTimer = 0;
-
-    const createPulse = () => {
-      const pulseGeo = new THREE.RingGeometry(0.5, 1.5, 64);
-      const pulseMat = new THREE.MeshBasicMaterial({
-        color: orbHexColors[Math.floor(Math.random() * orbHexColors.length)],
-        transparent: true,
-        opacity: isDark ? 0.35 : 0.45,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      });
-      const pulse = new THREE.Mesh(pulseGeo, pulseMat);
-      pulse.position.set(
-        (Math.random() - 0.5) * 100,
-        (Math.random() - 0.5) * 60,
-        (Math.random() - 0.5) * 20
-      );
-      pulse.lookAt(camera.position);
-      scene.add(pulse);
-      pulseRings.push({ mesh: pulse, life: 0, maxLife: 150 + Math.random() * 100 });
-    };
+    // Pulses removed by request
 
     // ── Hexagonal grid overlay ──
     const hexGroup = new THREE.Group();
@@ -406,33 +325,7 @@ export default function BackgroundCanvas() {
       lineGeo.attributes.position.needsUpdate = true;
       lineGeo.attributes.color.needsUpdate = true;
 
-      // Orbs
-      orbs.forEach((orb, i) => {
-        const d = orbData[i];
-        orb.position.x += d.speed.x;
-        orb.position.y += d.speed.y;
-        orb.position.z += d.speed.z;
-        if (Math.abs(orb.position.x) > 90) d.speed.x *= -1;
-        if (Math.abs(orb.position.y) > 60) d.speed.y *= -1;
-        if (Math.abs(orb.position.z) > 45) d.speed.z *= -1;
-        const breath = 1 + Math.sin(time * 0.5 + d.phase) * 0.2;
-        orb.scale.setScalar(breath);
-        const mat = orb.material as THREE.MeshBasicMaterial;
-        mat.opacity = d.baseOpacity + Math.sin(time * 0.8 + d.phase) * 0.03;
-      });
-
-      // Rings
-      rings.forEach((ring, i) => {
-        const d = ringData[i];
-        ring.rotation.x += d.rotSpeed.x;
-        ring.rotation.y += d.rotSpeed.y;
-        ring.rotation.z += d.rotSpeed.z;
-        const angle = time * d.orbitSpeed + d.phase;
-        ring.position.x = Math.cos(angle) * d.orbitRadius;
-        ring.position.y = Math.sin(angle) * d.orbitRadius * 0.6;
-        const mat = ring.material as THREE.MeshBasicMaterial;
-        mat.opacity = (isDark ? 0.12 : 0.2) + Math.sin(time * 1.2 + d.phase) * 0.05;
-      });
+      // Orbs and rings logic removed
 
       // Spiral galaxy rotation
       spiralGroup.rotation.z += 0.0004;
@@ -459,26 +352,7 @@ export default function BackgroundCanvas() {
         }
       }
 
-      // Pulse waves
-      pulseTimer++;
-      if (pulseTimer > 80) {
-        createPulse();
-        pulseTimer = 0;
-      }
-      for (let i = pulseRings.length - 1; i >= 0; i--) {
-        const p = pulseRings[i];
-        p.life++;
-        const progress = p.life / p.maxLife;
-        p.mesh.scale.setScalar(1 + progress * 50);
-        const mat = p.mesh.material as THREE.MeshBasicMaterial;
-        mat.opacity = (isDark ? 0.3 : 0.4) * (1 - progress);
-        if (p.life >= p.maxLife) {
-          scene.remove(p.mesh);
-          p.mesh.geometry.dispose();
-          (p.mesh.material as THREE.Material).dispose();
-          pulseRings.splice(i, 1);
-        }
-      }
+      // Pulse logic removed
 
       // Hex grid gentle float
       hexGroup.rotation.z += 0.00008;
