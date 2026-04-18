@@ -2,10 +2,10 @@ import requests
 import time
 import random
 
-API_ENDPOINT = "http://localhost:8000/api/v1/traffic/log"
+API_ENDPOINT = "http://localhost:8001/api/v1/traffic/log"
 
 def start_mock():
-    print(f"📡 AI MOCK GENERATOR: Simulating Network Attacks for React Dashboard\nTargeting {API_ENDPOINT}...\nPress Ctrl+C to stop.")
+    print(f"AI MOCK GENERATOR: Simulating Network Attacks for React Dashboard\nTargeting {API_ENDPOINT}...\nPress Ctrl+C to stop.")
     
     protocols = ["TCP", "UDP", "ICMP", "HTTP"]
     threat_classes = ["DDoS (Ping of Death)", "DoS", "Probe", "U2R (Root Access)"]
@@ -39,13 +39,13 @@ def start_mock():
                 # Post data
                 requests.post(API_ENDPOINT, json=payload, timeout=1)
                 if is_threat:
-                    print(f"🚨 Sent AI ALERT: {label} detected via Random Forest model!")
+                    print(f"Sent AI ALERT: {label} detected via Random Forest model!")
             except Exception as e:
                 # print("Failed to send, is backend running?")
                 pass
                 
     except KeyboardInterrupt:
-        print("\n⏹️ Stopped mock traffic generation.")
+        print("\nStopped mock traffic generation.")
 
 if __name__ == "__main__":
     start_mock()
