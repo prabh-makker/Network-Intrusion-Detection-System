@@ -334,6 +334,7 @@ export default function NIDSDashboard() {
   const [trafficChartData, setTrafficChartData] = useState<any[]>([]);
   const [blockingId, setBlockingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const chartBufferRef = useRef<
     { time: string; traffic: number; threats: number }[]
@@ -573,32 +574,42 @@ export default function NIDSDashboard() {
 
               <button
                 onClick={() => {
-                  const details =
-                    currentStatus === "SECURE"
-                      ? "All AI scanners are green. No active threats detected."
-                      : currentStatus === "WARNING"
-                        ? "AI has flagged potential threats. Review the Live Feed below."
-                        : "CRITICAL: High volume of threats detected. Action may be required.";
-                  toast(
-                    currentStatus === "SECURE"
-                      ? "success"
-                      : currentStatus === "WARNING"
-                        ? "warning"
-                        : "error",
-                    `System ${statusConfig[currentStatus].label}`,
-                    details,
-                  );
+                  if (isAnalyzing) return;
+                  setIsAnalyzing(true);
+                  setTimeout(() => {
+                    setIsAnalyzing(false);
+                    const details =
+                      currentStatus === "SECURE"
+                        ? "All AI scanners are green. No active threats detected."
+                        : currentStatus === "WARNING"
+                          ? "AI has flagged potential threats. Review the Live Feed below."
+                          : "CRITICAL: High volume of threats detected. Action may be required.";
+                    toast(
+                      currentStatus === "SECURE"
+                        ? "success"
+                        : currentStatus === "WARNING"
+                          ? "warning"
+                          : "error",
+                      `System ${statusConfig[currentStatus].label}`,
+                      details,
+                    );
+                  }, 2000);
                 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur border transition-all active:scale-95 ${isDark ? "bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-purple-500/30 hover:border-purple-500/60" : "bg-purple-950/10 border-purple-400/20 hover:border-purple-400/40"}`}
+                disabled={isAnalyzing}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur border transition-all active:scale-95 ${isDark ? "bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-purple-500/30 hover:border-purple-500/60" : "bg-purple-950/10 border-purple-400/20 hover:border-purple-400/40"} ${isAnalyzing ? "opacity-80 cursor-wait" : ""}`}
               >
-                <StatusIcon
-                  size={16}
-                  style={{ color: statusConfig[currentStatus].color }}
-                />
+                {isAnalyzing ? (
+                  <RefreshCw size={16} className="animate-spin text-cyan-400" />
+                ) : (
+                  <StatusIcon
+                    size={16}
+                    style={{ color: statusConfig[currentStatus].color }}
+                  />
+                )}
                 <span
                   className={`font-semibold text-sm ${isDark ? "text-white" : "text-purple-900"}`}
                 >
-                  {statusConfig[currentStatus].label}
+                  {isAnalyzing ? "ANALYZING..." : statusConfig[currentStatus].label}
                 </span>
               </button>
 
