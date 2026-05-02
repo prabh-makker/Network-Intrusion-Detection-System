@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", _INSECURE_KEY)
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 90  # 90 days
 
     CORS_ORIGINS: str = os.getenv(
         "CORS_ORIGINS",
