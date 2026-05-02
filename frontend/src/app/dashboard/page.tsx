@@ -439,9 +439,10 @@ export default function NIDSDashboard() {
       }
     };
 
+    if (!authenticated) return;
     const interval = setInterval(sendMock, 2000);
     return () => clearInterval(interval);
-  }, [apiUrl]);
+  }, [apiUrl, authenticated]);
 
   useEffect(() => {
     const interval = setInterval(() => {
