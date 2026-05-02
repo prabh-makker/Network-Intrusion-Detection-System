@@ -402,7 +402,46 @@ export default function NIDSDashboard() {
 
   useEffect(() => {
     fetchTimeline();
+    // Auto-refresh timeline every 2 minutes
+    const interval = setInterval(() => fetchTimeline(), 2 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [fetchTimeline]);
+
+  // Built-in mock traffic sender — keeps live chart populated without needing
+  // the external Python sniffer. Sends 1 packet every 2 s.
+  useEffect(() => {
+    const THREATS = ["DoS", "DDoS (Ping of Death)", "Probe", "U2R (Root Access)"];
+    const PROTOCOLS = ["TCP", "UDP", "ICMP", "HTTP"];
+    const SRC_BLOCKS = ["185.10", "13.210", "114.119", "45.22", "172.67", "103.22"];
+
+    const sendMock = async () => {
+      try {
+        const isT = Math.random() < 0.2;
+        const srcB = SRC_BLOCKS[Math.floor(Math.random() * SRC_BLOCKS.length)];
+        const src = `${srcB}.${Math.floor(Math.random() * 254) + 1}.${Math.floor(Math.random() * 254) + 1}`;
+        const payload = {
+          timestamp: Date.now() / 1000,
+          src_ip: src,
+          dst_ip: `10.0.0.${Math.floor(Math.random() * 254) + 1}`,
+          protocol: PROTOCOLS[Math.floor(Math.random() * PROTOCOLS.length)],
+          length: Math.floor(Math.random() * 65000) + 40,
+          label: isT ? THREATS[Math.floor(Math.random() * THREATS.length)] : "Normal",
+          confidence: isT ? +(92 + Math.random() * 7).toFixed(2) : 99.9,
+          is_threat: isT,
+        };
+        await fetchWithAuth(`${apiUrl}/api/v1/traffic/log`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // silent — backend may be temporarily unavailable
+      }
+    };
+
+    const interval = setInterval(sendMock, 2000);
+    return () => clearInterval(interval);
+  }, [apiUrl]);
 
   useEffect(() => {
     const interval = setInterval(() => {
