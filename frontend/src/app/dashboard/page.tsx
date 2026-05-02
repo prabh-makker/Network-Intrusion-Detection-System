@@ -428,24 +428,53 @@ export default function NIDSDashboard() {
   }, [packets]);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    const wsUrl = getWsUrl();
-    const ws = new WebSocket(
-      `${wsUrl}/api/v1/traffic/stream?token=${encodeURIComponent(token)}`,
-    );
-    ws.onopen = () => setIsLive(true);
-    ws.onmessage = (event) => {
-      try {
-        const packet: Packet = JSON.parse(event.data);
-        setPackets((prev) => [packet, ...prev].slice(0, 50));
-        setTotalPackets((prev) => prev + 1);
-        if (packet.is_threat) setThreatCount((prev) => prev + 1);
-      } catch {}
+    let ws: WebSocket | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 2000;
+    let destroyed = false;
+
+    const connect = () => {
+      const token = getToken();
+      if (!token || destroyed) return;
+      const wsUrl = getWsUrl();
+      ws = new WebSocket(
+        `${wsUrl}/api/v1/traffic/stream?token=${encodeURIComponent(token)}`,
+      );
+      ws.onopen = () => {
+        setIsLive(true);
+        retryDelay = 2000; // reset backoff on success
+      };
+      ws.onmessage = (event) => {
+        try {
+          const packet: Packet = JSON.parse(event.data);
+          setPackets((prev) => [packet, ...prev].slice(0, 50));
+          setTotalPackets((prev) => prev + 1);
+          if (packet.is_threat) setThreatCount((prev) => prev + 1);
+        } catch (e) {
+          console.error("WS message parse error:", e);
+        }
+      };
+      ws.onclose = () => {
+        setIsLive(false);
+        if (!destroyed) {
+          retryTimeout = setTimeout(() => {
+            retryDelay = Math.min(retryDelay * 2, 30000);
+            connect();
+          }, retryDelay);
+        }
+      };
+      ws.onerror = () => {
+        // onerror always fires before onclose; onclose handles reconnect
+        setIsLive(false);
+      };
     };
-    ws.onclose = () => setIsLive(false);
-    ws.onerror = (e) => { console.error("WebSocket error:", e); setIsLive(false); };
-    return () => ws.close();
+
+    connect();
+    return () => {
+      destroyed = true;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      ws?.close();
+    };
   }, []);
 
   const handlePCAPUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
