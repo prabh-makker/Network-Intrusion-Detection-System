@@ -2,7 +2,7 @@ import requests
 import time
 import random
 
-API_ENDPOINT = "http://localhost:8001/api/v1/traffic/log"
+API_ENDPOINT = "http://localhost:8002/api/v1/traffic/log"
 
 def start_mock():
     print(f"AI MOCK GENERATOR: Simulating Network Attacks for React Dashboard\nTargeting {API_ENDPOINT}...\nPress Ctrl+C to stop.")

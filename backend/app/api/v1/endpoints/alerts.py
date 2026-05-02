@@ -111,16 +111,13 @@ async def get_alert_stats(
 @router.get("/timeline")
 async def get_threat_timeline(
     db: Session = Depends(get_db),
-    range: str = Query(default="24h"),
+    time_range: str = Query(default="24h", alias="range"),
     current_user=Depends(deps.get_current_active_user)
 ):
     """Return real threat counts grouped by time period for the historical timeline chart."""
-    from datetime import datetime, timezone, timedelta
-    import builtins
+    from datetime import datetime, timedelta
 
-    now = datetime.now(timezone.utc)
-
-    time_range = range  # Avoid shadowing builtin range
+    now = datetime.utcnow()
 
     if time_range == "7d":
         since = now - timedelta(days=7)
@@ -157,7 +154,7 @@ async def get_threat_timeline(
         db_map[key] = db_map.get(key, 0) + 1
 
     result = []
-    for i in builtins.range(periods):
+    for i in range(periods):
         period_start = since + (i * delta)
         if time_range == "7d":
             key = period_start.strftime("%Y-%m-%d")

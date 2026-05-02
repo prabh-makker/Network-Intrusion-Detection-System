@@ -95,7 +95,9 @@ export default function AlertsPage() {
         const res = await fetchWithAuth(url);
         const data = await res.json();
         setAlerts(data);
-      } catch {}
+      } catch (e) {
+        console.error("fetchAlerts failed:", e);
+      }
     };
     fetchAlerts();
     const interval = setInterval(fetchAlerts, 3000);
@@ -109,7 +111,9 @@ export default function AlertsPage() {
         const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`);
         const data = await res.json();
         setStats(data);
-      } catch {}
+      } catch (e) {
+        console.error("fetchStats failed:", e);
+      }
     };
     fetchStats();
     const interval = setInterval(fetchStats, 5000);

@@ -354,7 +354,9 @@ export default function NIDSDashboard() {
         const data = await res.json();
         setStats(data);
       }
-    } catch {}
+    } catch (e) {
+      console.error("fetchStats failed:", e);
+    }
   }, [apiUrl]);
 
   const fetchAlerts = useCallback(async () => {
@@ -366,7 +368,9 @@ export default function NIDSDashboard() {
         const data = await res.json();
         setRecentAlerts(data);
       }
-    } catch {}
+    } catch (e) {
+      console.error("fetchAlerts failed:", e);
+    }
   }, [apiUrl]);
 
   useEffect(() => {
@@ -389,7 +393,8 @@ export default function NIDSDashboard() {
         const data = await res.json();
         setHistoricalData(data);
       }
-    } catch {
+    } catch (e) {
+      console.error("fetchTimeline failed:", e);
     } finally {
       setLoadingTimeline(false);
     }
@@ -439,7 +444,7 @@ export default function NIDSDashboard() {
       } catch {}
     };
     ws.onclose = () => setIsLive(false);
-    ws.onerror = () => {};
+    ws.onerror = (e) => { console.error("WebSocket error:", e); setIsLive(false); };
     return () => ws.close();
   }, []);
 

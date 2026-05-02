@@ -1,10 +1,12 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 import asyncio
 import json
+import logging
 import random
 from typing import List
 from app.core.security import decode_token
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class ConnectionManager:
@@ -68,7 +70,7 @@ def send_discord_alert(packet):
     try:
         requests.post(settings.DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=2)
     except Exception as e:
-        print(f"Webhook Failed: {e}")
+        logger.warning("Discord webhook failed: %s", e)
 
 @router.post("/log")
 async def log_packet(packet: PacketLog, db: Session = Depends(get_db)):
