@@ -13,6 +13,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  BrainCircuit,
+  Settings,
+  Gauge,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { removeToken } from "@/lib/auth";
@@ -21,6 +24,9 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/alerts", label: "Threat Alerts", icon: Bell },
   { href: "/map", label: "Geo-IP Map", icon: Globe },
+  { href: "/ml", label: "ML Analytics", icon: BrainCircuit },
+  { href: "/performance", label: "Performance", icon: Gauge },
+  { href: "/settings", label: "System Config", icon: Settings },
 ];
 
 function SidebarSparkles() {

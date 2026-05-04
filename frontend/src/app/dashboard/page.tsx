@@ -46,6 +46,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from "recharts";
 
 type Packet = {
@@ -1000,6 +1002,109 @@ export default function NIDSDashboard() {
               )}
             </motion.div>
           </div>
+
+          {/* ATTACK DISTRIBUTION OVER TIME — Time-Series Analysis */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className={`rounded-2xl overflow-hidden ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-purple-400/20 bg-purple-950/10"} backdrop-blur-xl p-6`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3
+                className={`text-xl font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}
+              >
+                <TrendingUp size={20} style={{ color: "#a855f7" }} />
+                Attack Distribution Over Time
+              </h3>
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${isDark ? "bg-purple-500/20 text-purple-300" : "bg-purple-400/20 text-purple-800"}`}>
+                Statistical Analysis
+              </span>
+            </div>
+            <p className={`text-sm mb-4 ${isDark ? "text-purple-300" : "text-purple-800"}`}>
+              Time-series visualization of threat types detected in the last 30 minutes
+            </p>
+            {trafficChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trafficChartData}>
+                  <defs>
+                    <linearGradient id="gradDoS" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradProbe" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradU2R" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(148,163,184,0.1)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="time"
+                    stroke="#9ca3af"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#9ca3af"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    label={{ value: "Count", angle: -90, position: "insideLeft" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark
+                        ? "rgba(15,10,26,0.95)"
+                        : "rgba(255,255,255,0.95)",
+                      border: isDark
+                        ? "1px solid rgba(168,85,247,0.3)"
+                        : "1px solid rgba(203,213,225,0.5)",
+                      borderRadius: "10px",
+                      fontSize: "12px",
+                    }}
+                    itemStyle={{ color: isDark ? "#f1f5f9" : "#1e293b" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="threats"
+                    stroke="#ef4444"
+                    strokeWidth={3}
+                    fill="url(#gradDoS)"
+                    name="Threats Detected"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className={isDark ? "text-purple-300" : "text-purple-800"}>
+                  Waiting for traffic data...
+                </p>
+              </div>
+            )}
+            <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-purple-500/20">
+              <div>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>DoS Attacks</p>
+                <p className="text-lg font-bold text-red-400">—</p>
+              </div>
+              <div>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Probe Activity</p>
+                <p className="text-lg font-bold text-amber-400">—</p>
+              </div>
+              <div>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Privilege Escalation</p>
+                <p className="text-lg font-bold text-pink-400">—</p>
+              </div>
+            </div>
+          </motion.div>
 
           {/* RECENT ALERTS TABLE */}
           <motion.div
