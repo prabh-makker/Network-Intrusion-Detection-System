@@ -111,7 +111,7 @@ async def get_alert_stats(
 @router.get("/timeline")
 async def get_threat_timeline(
     db: Session = Depends(get_db),
-    time_range: str = Query(default="24h", alias="range"),
+    time_range: str = Query(default="24h"),
     current_user=Depends(deps.get_current_active_user)
 ):
     """Return real threat counts grouped by time period for the historical timeline chart."""
