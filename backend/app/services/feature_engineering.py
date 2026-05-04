@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 class FeatureEngineer:
     """Extract comprehensive features from threat data."""
 
+    # Configuration constants (avoid magic numbers)
+    MAX_HISTORY_WINDOW = 100  # Limit connection history scan to last 100
+    GEOIP_RISK_THRESHOLD = 0.5
+
     # KDD Cup 99 attack categories
     THREAT_TYPES = {
         "Normal": "normal",
@@ -72,12 +76,15 @@ class FeatureEngineer:
 
         Args:
             threat_log: Current threat record
-            connection_history: Previous connections from same source
+            connection_history: Previous connections from same source (limited to MAX_HISTORY_WINDOW)
 
         Returns:
             Dict of feature_name -> value
         """
         features = {}
+
+        # Limit history window to avoid O(N²) behavior in batch_extract
+        limited_history = connection_history[-self.MAX_HISTORY_WINDOW:] if connection_history else []
 
         # === Basic packet features ===
         features["duration"] = float(getattr(threat_log, "duration", 0))
@@ -86,12 +93,12 @@ class FeatureEngineer:
         features["bytes_total"] = features["src_bytes"] + features["dst_bytes"]
 
         # === Connection statistics ===
-        features["count"] = float(len(connection_history) + 1)
+        features["count"] = float(len(limited_history) + 1)
 
         # Count connections with same service
         protocol = str(getattr(threat_log, "protocol", "other")).lower()
         same_service = sum(
-            1 for log in connection_history
+            1 for log in limited_history
             if str(getattr(log, "protocol", "other")).lower() == protocol
         )
         features["srv_count"] = float(same_service + 1)
@@ -103,7 +110,7 @@ class FeatureEngineer:
         # === Error rates ===
         error_labels = ["U2R", "R2L", "Probe"]
         errors_in_history = sum(
-            1 for log in connection_history
+            1 for log in limited_history
             if getattr(log, "label", "") in error_labels
         )
         features["serror_rate"] = (
@@ -128,7 +135,7 @@ class FeatureEngineer:
         features["unique_services"] = float(
             len(set(
                 getattr(log, "service", "other")
-                for log in connection_history[-100:]  # Last 100 connections
+                for log in limited_history
             ))
         )
         features["port_diversity"] = min(
@@ -137,7 +144,7 @@ class FeatureEngineer:
 
         # SYN flood detection: high count + S0 flags
         syn_flood_count = sum(
-            1 for log in connection_history[-100:]
+            1 for log in limited_history
             if getattr(log, "flag", "") == "S0"
         )
         features["syn_flood_indicator"] = float(

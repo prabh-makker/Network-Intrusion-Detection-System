@@ -129,7 +129,18 @@
       "Bash(git commit -m 'audit: verify error handling and builtin shadowing *)",
       "Bash(git commit -m ' *)",
       "Bash(claude mcp *)",
-      "PowerShell(\\(Get-Content 'C:\\\\Users\\\\khalo\\\\EXAMPLE\\\\.claude\\\\settings.local.json' | Measure-Object -Line\\).Lines)"
+      "PowerShell(\\(Get-Content 'C:\\\\Users\\\\khalo\\\\EXAMPLE\\\\.claude\\\\settings.local.json' | Measure-Object -Line\\).Lines)",
+      "Bash(git commit -m 'fix: remove '\\\\''range'\\\\'' alias that shadows builtin in timeline endpoint *)",
+      "mcp__scheduled-tasks__create_scheduled_task",
+      "Bash(git commit -m 'feat: Add daily automation workflows *)",
+      "Bash(grep -E \"\\\\.\\(py|joblib|json\\)$\")",
+      "Bash(git commit -m 'feat: Add ML model training pipeline *)",
+      "Bash(git commit -m 'feat: Comprehensive ML training pipeline for 99%+ accuracy *)",
+      "Bash(git commit -m 'feat: Aggressive 99%+ accuracy training with ensemble methods *)",
+      "Bash(git commit -m 'feat: Automated daily training with realistic mock data *)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Bash(git commit -m 'refactor: Fix critical performance issues + add caching *)"
     ],
     "deny": [
       "Edit(.env)",
@@ -160,15 +171,15 @@
             "type": "command",
             "command": "npx prettier --write {file}",
             "if": "Edit(*.tsx)|Edit(*.ts)",
-            "async": true,
-            "statusMessage": "Formatting TypeScript..."
+            "statusMessage": "Formatting TypeScript...",
+            "async": true
           },
           {
             "type": "command",
             "command": "ruff format {file}",
             "if": "Edit(*.py)",
-            "async": true,
-            "statusMessage": "Formatting Python..."
+            "statusMessage": "Formatting Python...",
+            "async": true
           }
         ]
       }
