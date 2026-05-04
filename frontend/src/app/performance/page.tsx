@@ -27,6 +27,95 @@ interface SystemHealth {
   throughput: "good" | "warning" | "critical";
 }
 
+// Helper to generate insight cards (eliminates copy-paste)
+const getPerformanceInsights = (currentMetrics: { cpu: number; memory: number; latency: number; throughput: number }) => [
+  {
+    icon: "⚡",
+    title: "CPU Performance",
+    metric: currentMetrics.cpu,
+    critical: 80,
+    warning: 60,
+    messages: {
+      critical: "⚠️ CPU usage is critical. Consider optimizing resource allocation.",
+      warning: "⚠️ CPU usage is elevated. Monitor for potential bottlenecks.",
+      good: "✓ CPU usage is optimal. System performing well.",
+    },
+  },
+  {
+    icon: "💾",
+    title: "Memory Performance",
+    metric: currentMetrics.memory,
+    critical: 80,
+    warning: 60,
+    messages: {
+      critical: "⚠️ Memory usage is critical. Consider clearing cache or increasing capacity.",
+      warning: "⚠️ Memory usage is high. Monitor for memory leaks.",
+      good: "✓ Memory usage is healthy. Good headroom available.",
+    },
+  },
+  {
+    icon: "🔌",
+    title: "Network Latency",
+    metric: currentMetrics.latency,
+    critical: 60,
+    warning: 40,
+    messages: {
+      critical: "⚠️ Latency is high. Check network connectivity and routes.",
+      warning: "⚠️ Latency is moderate. Performance may be affected.",
+      good: "✓ Latency is low. Network response is fast.",
+    },
+  },
+  {
+    icon: "📊",
+    title: "Throughput",
+    metric: currentMetrics.throughput,
+    critical: 200,
+    warning: 500,
+    isInverse: true,
+    messages: {
+      critical: "⚠️ Throughput is low. May indicate network congestion.",
+      warning: "✓ Throughput is good. Sufficient bandwidth.",
+      good: "✓ Throughput is excellent. High network capacity.",
+    },
+  },
+];
+
+const InsightCard = ({
+  insight,
+  isDark,
+}: {
+  insight: ReturnType<typeof getPerformanceInsights>[0];
+  isDark: boolean;
+}) => {
+  let message = insight.messages.good;
+  if (insight.isInverse) {
+    message = insight.metric < insight.critical
+      ? insight.messages.critical
+      : insight.metric < insight.warning
+        ? insight.messages.warning
+        : insight.messages.good;
+  } else {
+    message = insight.metric > insight.critical
+      ? insight.messages.critical
+      : insight.metric > insight.warning
+        ? insight.messages.warning
+        : insight.messages.good;
+  }
+
+  return (
+    <div
+      className={`rounded-2xl p-6 border ${isDark ? "border-yellow-500/20" : "border-yellow-300/20"} backdrop-blur-xl`}
+    >
+      <h3 className="font-semibold text-[var(--foreground)] mb-3">
+        {insight.icon} {insight.title}
+      </h3>
+      <p className={`text-sm ${isDark ? "text-yellow-200" : "text-yellow-800"}`}>
+        {message}
+      </p>
+    </div>
+  );
+};
+
 export default function PerformancePage() {
   const { isDark } = useTheme();
   const [metricsHistory, setMetricsHistory] = useState<MetricsData[]>([]);
@@ -67,12 +156,24 @@ export default function PerformancePage() {
     return () => clearInterval(interval);
   }, []);
 
+  const getMetricStatus = (
+    value: number,
+    criticalThreshold: number,
+    warningThreshold: number,
+    isInverse = false
+  ): "good" | "warning" | "critical" => {
+    if (isInverse) {
+      return value < criticalThreshold ? "critical" : value < warningThreshold ? "warning" : "good";
+    }
+    return value > criticalThreshold ? "critical" : value > warningThreshold ? "warning" : "good";
+  };
+
   const getHealthStatus = (): SystemHealth => {
     return {
-      cpu: currentMetrics.cpu > 80 ? "critical" : currentMetrics.cpu > 60 ? "warning" : "good",
-      memory: currentMetrics.memory > 80 ? "critical" : currentMetrics.memory > 60 ? "warning" : "good",
-      latency: currentMetrics.latency > 60 ? "critical" : currentMetrics.latency > 40 ? "warning" : "good",
-      throughput: currentMetrics.throughput < 200 ? "critical" : currentMetrics.throughput < 500 ? "warning" : "good",
+      cpu: getMetricStatus(currentMetrics.cpu, 80, 60),
+      memory: getMetricStatus(currentMetrics.memory, 80, 60),
+      latency: getMetricStatus(currentMetrics.latency, 60, 40),
+      throughput: getMetricStatus(currentMetrics.throughput, 200, 500, true),
     };
   };
 
@@ -108,12 +209,7 @@ export default function PerformancePage() {
   }) => {
     const percentage = (value / max) * 100;
     const statusColor = getStatusColor(status);
-    const StatusIcon =
-      status === "good"
-        ? CheckCircle2
-        : status === "warning"
-          ? AlertCircle
-          : AlertCircle;
+    const StatusIcon = status === "good" ? CheckCircle2 : AlertCircle;
 
     return (
       <motion.div
@@ -496,65 +592,9 @@ export default function PerformancePage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
-                className={`rounded-2xl p-6 border ${isDark ? "border-yellow-500/20" : "border-yellow-300/20"} backdrop-blur-xl`}
-              >
-                <h3 className="font-semibold text-[var(--foreground)] mb-3">
-                  ⚡ CPU Performance
-                </h3>
-                <p className={`text-sm ${isDark ? "text-yellow-200" : "text-yellow-800"}`}>
-                  {currentMetrics.cpu > 80
-                    ? "⚠️ CPU usage is critical. Consider optimizing resource allocation."
-                    : currentMetrics.cpu > 60
-                      ? "⚠️ CPU usage is elevated. Monitor for potential bottlenecks."
-                      : "✓ CPU usage is optimal. System performing well."}
-                </p>
-              </div>
-
-              <div
-                className={`rounded-2xl p-6 border ${isDark ? "border-yellow-500/20" : "border-yellow-300/20"} backdrop-blur-xl`}
-              >
-                <h3 className="font-semibold text-[var(--foreground)] mb-3">
-                  💾 Memory Performance
-                </h3>
-                <p className={`text-sm ${isDark ? "text-yellow-200" : "text-yellow-800"}`}>
-                  {currentMetrics.memory > 80
-                    ? "⚠️ Memory usage is critical. Consider clearing cache or increasing capacity."
-                    : currentMetrics.memory > 60
-                      ? "⚠️ Memory usage is high. Monitor for memory leaks."
-                      : "✓ Memory usage is healthy. Good headroom available."}
-                </p>
-              </div>
-
-              <div
-                className={`rounded-2xl p-6 border ${isDark ? "border-yellow-500/20" : "border-yellow-300/20"} backdrop-blur-xl`}
-              >
-                <h3 className="font-semibold text-[var(--foreground)] mb-3">
-                  🔌 Network Latency
-                </h3>
-                <p className={`text-sm ${isDark ? "text-yellow-200" : "text-yellow-800"}`}>
-                  {currentMetrics.latency > 60
-                    ? "⚠️ Latency is high. Check network connectivity and routes."
-                    : currentMetrics.latency > 40
-                      ? "⚠️ Latency is moderate. Performance may be affected."
-                      : "✓ Latency is low. Network response is fast."}
-                </p>
-              </div>
-
-              <div
-                className={`rounded-2xl p-6 border ${isDark ? "border-yellow-500/20" : "border-yellow-300/20"} backdrop-blur-xl`}
-              >
-                <h3 className="font-semibold text-[var(--foreground)] mb-3">
-                  📊 Throughput
-                </h3>
-                <p className={`text-sm ${isDark ? "text-yellow-200" : "text-yellow-800"}`}>
-                  {currentMetrics.throughput > 700
-                    ? "✓ Throughput is excellent. High network capacity."
-                    : currentMetrics.throughput > 500
-                      ? "✓ Throughput is good. Sufficient bandwidth."
-                      : "⚠️ Throughput is low. May indicate network congestion."}
-                </p>
-              </div>
+              {getPerformanceInsights(currentMetrics).map((insight, idx) => (
+                <InsightCard key={idx} insight={insight} isDark={isDark} />
+              ))}
             </div>
           </motion.section>
         </div>

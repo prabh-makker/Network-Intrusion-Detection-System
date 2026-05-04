@@ -45,28 +45,23 @@ export default function SystemStartupPage() {
 
   const totalTime = bootSteps.reduce((sum, step) => sum + step.duration, 0);
 
+  const getStepStyleClass = (isComplete: boolean, isRunning: boolean, isDark: boolean): string => {
+    if (isComplete) return isDark ? "border-green-500/30 bg-green-500/5" : "border-green-400/30 bg-green-500/5";
+    if (isRunning) return isDark ? "border-blue-500/30 bg-blue-500/5" : "border-blue-400/30 bg-blue-500/5";
+    return isDark ? "border-purple-500/20 bg-purple-500/5" : "border-purple-400/20 bg-purple-500/5";
+  };
+
   const BootStepItem = ({ step, index }: { step: BootStep; index: number }) => {
-    const isComplete = systemReady || bootTime >= bootSteps.slice(0, index).reduce((sum, s) => sum + s.duration, 0) + step.duration;
-    const isRunning = !isComplete && bootTime >= bootSteps.slice(0, index).reduce((sum, s) => sum + s.duration, 0);
+    const cumulativeTime = bootSteps.slice(0, index).reduce((sum, s) => sum + s.duration, 0);
+    const isComplete = systemReady || bootTime >= cumulativeTime + step.duration;
+    const isRunning = !isComplete && bootTime >= cumulativeTime;
 
     return (
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: index * 0.05 }}
-        className={`flex items-start gap-4 p-4 rounded-lg border ${
-          isComplete
-            ? isDark
-              ? "border-green-500/30 bg-green-500/5"
-              : "border-green-400/30 bg-green-500/5"
-            : isRunning
-              ? isDark
-                ? "border-blue-500/30 bg-blue-500/5"
-                : "border-blue-400/30 bg-blue-500/5"
-              : isDark
-                ? "border-purple-500/20 bg-purple-500/5"
-                : "border-purple-400/20 bg-purple-500/5"
-        }`}
+        className={`flex items-start gap-4 p-4 rounded-lg border ${getStepStyleClass(isComplete, isRunning, isDark)}`}
       >
         <div className="flex-shrink-0 mt-1">
           {isComplete ? (

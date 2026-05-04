@@ -314,6 +314,49 @@ function ThreatIndicator({
   );
 }
 
+// Stat cards config (constant to prevent recreation on every render)
+const getStatCards = (
+  totalPackets: number,
+  threatCount: number,
+  stats: DashboardStats | null,
+  isLive: boolean,
+  packets: Packet[]
+) => [
+  {
+    label: "Packets Analyzed",
+    value: totalPackets,
+    icon: Activity,
+    color: "#06b6d4",
+    trend: isLive ? "Live stream" : "Paused",
+  },
+  {
+    label: "Threats Detected",
+    value: stats?.total_threats ?? threatCount,
+    icon: ShieldAlert,
+    color: "#ef4444",
+    trend: stats
+      ? `${Object.keys(stats.by_label).length} categories`
+      : "—",
+  },
+  {
+    label: "Active Connections",
+    value: isLive ? packets.length : 0,
+    icon: Radio,
+    color: ROYAL_COLORS.deepPurple,
+    trend: isLive ? "Streaming" : "Idle",
+  },
+  {
+    label: "Detection Rate",
+    display:
+      totalPackets > 0
+        ? `${((threatCount / totalPackets) * 100).toFixed(1)}%`
+        : "0%",
+    icon: Zap,
+    color: ROYAL_COLORS.gold,
+    trend: "ML: 99.82%",
+  },
+];
+
 // Main Dashboard
 export default function NIDSDashboard() {
   const router = useRouter();
@@ -456,7 +499,7 @@ export default function NIDSDashboard() {
       const cutoff = Date.now() - 3000;
       const recentPackets = packets.filter((p) => p.timestamp * 1000 > cutoff);
       const recentThreats = recentPackets.filter((p) => p.is_threat).length;
-      chartBufferRef.current = [
+      const newData = [
         ...chartBufferRef.current,
         {
           time: timeLabel,
@@ -464,7 +507,13 @@ export default function NIDSDashboard() {
           threats: recentThreats,
         },
       ].slice(-30);
-      setTrafficChartData([...chartBufferRef.current]);
+
+      // Only update state if data actually changed (prevents unnecessary re-renders)
+      const dataChanged = JSON.stringify(chartBufferRef.current) !== JSON.stringify(newData);
+      if (dataChanged) {
+        chartBufferRef.current = newData;
+        setTrafficChartData([...newData]);
+      }
     }, 3000);
     return () => clearInterval(interval);
   }, [packets]);
@@ -727,41 +776,7 @@ export default function NIDSDashboard() {
         <div className="max-w-7xl mx-auto p-6 space-y-6">
           {/* STAT CARDS WITH 3D ORBS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                label: "Packets Analyzed",
-                value: totalPackets,
-                icon: Activity,
-                color: "#06b6d4",
-                trend: isLive ? "Live stream" : "Paused",
-              },
-              {
-                label: "Threats Detected",
-                value: stats?.total_threats ?? threatCount,
-                icon: ShieldAlert,
-                color: "#ef4444",
-                trend: stats
-                  ? `${Object.keys(stats.by_label).length} categories`
-                  : "—",
-              },
-              {
-                label: "Active Connections",
-                value: isLive ? packets.length : 0,
-                icon: Radio,
-                color: ROYAL_COLORS.deepPurple,
-                trend: isLive ? "Streaming" : "Idle",
-              },
-              {
-                label: "Detection Rate",
-                display:
-                  totalPackets > 0
-                    ? `${((threatCount / totalPackets) * 100).toFixed(1)}%`
-                    : "0%",
-                icon: Zap,
-                color: ROYAL_COLORS.gold,
-                trend: "ML: 99.82%",
-              },
-            ].map((s, i) => (
+            {getStatCards(totalPackets, threatCount, stats, isLive, packets).map((s, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}

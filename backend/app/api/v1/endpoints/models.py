@@ -1,6 +1,3 @@
-import os
-import json
-import joblib
 import numpy as np
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -8,11 +5,9 @@ from sqlalchemy import func, desc
 from app.api import deps
 from app.db.session import get_db
 from app.models.models import ThreatLog
+from app.core.model_loader import load_model_and_metadata
 
 router = APIRouter()
-
-MODEL_PATH   = os.path.join(os.getcwd(), "..", "sniffer", "models", "nids_rf_model.joblib")
-METADATA_PATH = os.path.join(os.getcwd(), "..", "sniffer", "models", "model_metadata.json")
 
 FEATURE_DESCRIPTIONS = {
     "duration":       "Connection duration in seconds",
@@ -69,24 +64,12 @@ STATIC_METRICS = {
 }
 
 
-def _load_model():
-    try:
-        if os.path.exists(MODEL_PATH):
-            model = joblib.load(MODEL_PATH)
-            with open(METADATA_PATH) as f:
-                meta = json.load(f)
-            return model, meta
-    except Exception:
-        pass
-    return None, None
-
-
 @router.get("/metrics")
 def get_model_metrics(
     current_user=Depends(deps.get_current_active_user),
 ):
     """Return RF model info, feature importances, and accuracy metrics."""
-    model, meta = _load_model()
+    model, meta = load_model_and_metadata()
 
     feature_names = meta["features"] if meta else list(FEATURE_DESCRIPTIONS.keys())
     classes       = meta["classes"]  if meta else list(STATIC_METRICS["by_class"].keys())

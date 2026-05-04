@@ -135,23 +135,25 @@ async def get_threat_timeline(
         periods = 24
         delta = timedelta(hours=1)
 
-    # Get all threats in the range
+    # Get aggregated threat counts by period (database-level grouping)
+    from sqlalchemy import func as sql_func, cast, String
+
+    if time_range == "7d" or time_range == "30d":
+        group_expr = cast(ThreatLog.timestamp, String).substr(1, 10)  # YYYY-MM-DD
+    else:  # 24h
+        group_expr = cast(ThreatLog.timestamp, String).substr(1, 13)  # YYYY-MM-DD HH
+
     rows = (
-        db.query(ThreatLog)
+        db.query(
+            group_expr.label("period"),
+            sql_func.count(ThreatLog.id).label("threat_count")
+        )
         .filter(ThreatLog.timestamp >= since)
+        .group_by(group_expr)
         .all()
     )
 
-    # Group threats by period
-    db_map = {}
-    for row in rows:
-        if time_range == "7d":
-            key = row.timestamp.strftime("%Y-%m-%d")
-        elif time_range == "30d":
-            key = row.timestamp.strftime("%Y-%m-%d")
-        else:  # 24h
-            key = row.timestamp.strftime("%Y-%m-%d %H:00")
-        db_map[key] = db_map.get(key, 0) + 1
+    db_map = {row[0]: row[1] for row in rows}
 
     result = []
     for i in range(periods):
@@ -198,15 +200,25 @@ async def export_alerts_pdf(
         headers={"Content-Disposition": "attachment; filename=nids-threat-report.pdf"}
     )
 
+_geoip_cache: dict[str, dict] = {}  # Simple LRU cache for GeoIP results
+
 @router.get("/geoip/{ip}")
 async def geoip_lookup(
     ip: str,
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Server-side proxy for ip-api.com to avoid CORS/browser restrictions."""
+    """Server-side proxy for ip-api.com to avoid CORS/browser restrictions. Results cached to prevent rate limiting."""
+    # Check cache first
+    if ip in _geoip_cache:
+        return _geoip_cache[ip]
+
     try:
         r = http_requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
-        return r.json()
+        result = r.json()
+        # Cache up to 1000 IPs (LRU eviction would be better but this is simple)
+        if len(_geoip_cache) < 1000:
+            _geoip_cache[ip] = result
+        return result
     except Exception:
         raise HTTPException(status_code=502, detail="GeoIP lookup failed")
 
