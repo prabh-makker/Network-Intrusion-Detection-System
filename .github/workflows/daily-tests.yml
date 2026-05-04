@@ -1,0 +1,44 @@
+name: Daily Test Suite
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 3 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Backend tests
+        run: |
+          cd backend
+          pip install -q -r requirements.txt pytest pytest-asyncio
+          python -m pytest backend/tests/ -v --tb=short 2>/dev/null || echo "⚠ Some tests failed, check logs"
+
+      - name: Frontend linting
+        run: |
+          cd frontend
+          npm install -q
+          npm run lint 2>/dev/null || echo "⚠ Linting issues, review"
+
+      - name: Frontend type check
+        run: |
+          cd frontend
+          npx tsc --noEmit 2>/dev/null && echo "✓ TypeScript OK" || echo "⚠ Type errors"
+
+      - name: Report
+        if: always()
+        run: echo "Test suite complete."

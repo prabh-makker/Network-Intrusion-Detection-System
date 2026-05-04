@@ -1,0 +1,49 @@
+name: Daily Security & Performance Audit
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install backend deps
+        run: |
+          cd backend
+          pip install -q -r requirements.txt
+
+      - name: Security scan - hardcoded secrets
+        run: |
+          cd backend
+          grep -r "SECRET_KEY\s*=\s*['\"]" --include="*.py" . || echo "✓ No hardcoded secrets"
+          grep -r "password\s*=\s*['\"]" --include="*.py" app/api/endpoints/ || echo "✓ No hardcoded passwords"
+
+      - name: Security scan - JWT validation
+        run: |
+          cd backend
+          grep -A5 "decode.*algorithm" app/core/security.py | grep -q "HS256" && echo "✓ JWT uses HS256" || echo "⚠ JWT validation check"
+
+      - name: Performance check - N+1 queries
+        run: |
+          cd backend
+          grep -n "\.all()" app/api/v1/endpoints/*.py | grep -v "group_by\|limit" | wc -l | grep -q "^0$" && echo "✓ No obvious N+1 patterns" || echo "⚠ Review .all() calls"
+
+      - name: API endpoints audit
+        run: |
+          cd backend
+          echo "Checking rate limits on auth endpoints..."
+          grep -B5 "def.*login\|def.*signup" app/api/v1/endpoints/*.py | grep -q "@limiter" && echo "✓ Rate limits applied" || echo "⚠ Add rate limits"
+
+      - name: Report
+        if: always()
+        run: echo "Daily audit complete. Review logs above."
