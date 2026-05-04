@@ -232,8 +232,11 @@ def train_and_save_model() -> bool:
         db.close()
         return True
 
+    except (ValueError, IOError, OSError) as e:
+        print(f"\n[ML] ✗ Data or file error: {e}")
+        return False
     except Exception as e:
-        print(f"\n[ML] ✗ Retraining failed: {e}")
+        print(f"\n[ML] ✗ Unexpected error during retraining: {e}")
         import traceback
         traceback.print_exc()
         return False

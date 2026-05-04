@@ -7,7 +7,7 @@ with feature_engineering module.
 import random
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, Optional
 from sqlalchemy.orm import Session
 from app.models.models import ThreatLog
 from uuid import uuid4
@@ -32,7 +32,7 @@ class MockDataGenerator:
     SERVICES = list(SERVICES.keys())
     FLAGS = list(FLAGS.keys())
 
-    def __init__(self, seed=None):
+    def __init__(self, seed: Optional[int] = None) -> None:
         if seed:
             random.seed(seed)
             np.random.seed(seed)
@@ -273,8 +273,11 @@ def generate_and_train_daily(db: Session, n_samples: int = 2000) -> bool:
         else:
             return False
 
+    except (ValueError, IOError, OSError) as e:
+        print(f"\n{LOG_PREFIX_DAILY} ✗ Data or file error: {e}")
+        return False
     except Exception as e:
-        print(f"\n{LOG_PREFIX_DAILY} ✗ Daily cycle failed: {e}")
+        print(f"\n{LOG_PREFIX_DAILY} ✗ Unexpected error in daily cycle: {e}")
         import traceback
         traceback.print_exc()
         return False

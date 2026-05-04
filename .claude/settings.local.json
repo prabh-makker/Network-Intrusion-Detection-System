@@ -140,7 +140,10 @@
       "Bash(git commit -m 'feat: Automated daily training with realistic mock data *)",
       "Bash(git diff *)",
       "Read(//tmp/**)",
-      "Bash(git commit -m 'refactor: Fix critical performance issues + add caching *)"
+      "Bash(git commit -m 'refactor: Fix critical performance issues + add caching *)",
+      "Bash(git commit -m 'refactor: Create consolidation modules to eliminate 200+ lines duplication *)",
+      "Bash(git commit -m 'refactor: Fix nested conditionals, magic numbers, magic strings in mock_data_generator *)",
+      "Bash(git commit -m 'refactor: Fix broad exception handling + add missing type hints *)"
     ],
     "deny": [
       "Edit(.env)",

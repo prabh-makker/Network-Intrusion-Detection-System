@@ -193,7 +193,8 @@ class FeatureEngineer:
             if octets[0] == 192 and octets[1] == 168:
                 return True
             return False
-        except:
+        except (ValueError, IndexError):
+            # Invalid IP format
             return False
 
     def batch_extract(self, db: Session, batch_size: int = 1000) -> pd.DataFrame:

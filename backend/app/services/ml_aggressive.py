@@ -319,8 +319,11 @@ def train_ensemble_99_percent() -> bool:
         db.close()
         return True
 
+    except (ValueError, IOError, OSError) as e:
+        print(f"\n[ML] ✗ Data or file error in ensemble training: {e}")
+        return False
     except Exception as e:
-        print(f"\n[ML] ✗ Ensemble training failed: {e}")
+        print(f"\n[ML] ✗ Unexpected error during ensemble training: {e}")
         import traceback
         traceback.print_exc()
         return False
