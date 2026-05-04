@@ -1,9 +1,11 @@
 import time
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.api import deps
 from app.core import security
@@ -14,6 +16,7 @@ from app.models.models import User
 from app.db.session import get_db
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 # Rate limit for reset attempts: { username: [timestamp, ...] }
 _reset_rate: dict[str, list[float]] = {}
@@ -36,8 +39,9 @@ def get_security_questions() -> Any:
 
 
 @router.post("/login/access-token")
+@limiter.limit("20/minute")
 def login_access_token(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    request: Request, db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """OAuth2 compatible token login, get an access token for future requests"""
     user = db.query(User).filter(User.username == form_data.username).first()
@@ -56,7 +60,9 @@ def login_access_token(
 
 
 @router.post("/signup")
+@limiter.limit("10/minute")
 def create_user_signup(
+    request: Request,
     username: str = Body(...),
     password: str = Body(...),
     email: str = Body(...),
@@ -102,7 +108,9 @@ def create_user_signup(
 
 
 @router.post("/forgot/get-question")
+@limiter.limit("15/minute")
 def get_user_question(
+    request: Request,
     username: str = Body(..., embed=True),
     db: Session = Depends(get_db)
 ) -> Any:
@@ -118,7 +126,9 @@ def get_user_question(
 
 
 @router.post("/forgot/reset")
+@limiter.limit("10/minute")
 def reset_with_security_answer(
+    request: Request,
     username: str = Body(...),
     security_answer: str = Body(...),
     new_password: str = Body(...),

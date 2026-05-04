@@ -112,9 +112,19 @@ def analyze_packet(packet):
 
     # 2. AI Inference with Dynamic Confidence
     if model:
-        prediction = model.predict(input_df)[0]
+        prediction_label = model.predict(input_df)[0]
         probs = model.predict_proba(input_df)[0]
         confidence = round(float(np.max(probs)) * 100, 2)
+
+        # Decode numeric prediction to string label (XGBoost returns numeric labels)
+        if isinstance(prediction_label, (int, np.integer)):
+            label_classes = metadata.get('label_encoder_classes', metadata.get('classes', []))
+            if label_classes and prediction_label < len(label_classes):
+                prediction = label_classes[prediction_label]
+            else:
+                prediction = str(prediction_label)
+        else:
+            prediction = prediction_label
     else:
         prediction = "Normal"
         confidence = 100.0
@@ -147,7 +157,7 @@ def analyze_packet(packet):
 
 if __name__ == "__main__":
     print("NIDS Sentinel Sniffer: Live Artificial Intelligence Mode")
-    print(f"Monitoring via Random Forest Layer... (Target: {API_ENDPOINT})")
+    print(f"Monitoring via XGBoost Classifier... (Target: {API_ENDPOINT})")
     
     best_iface = None
     for iface in conf.ifaces.values():

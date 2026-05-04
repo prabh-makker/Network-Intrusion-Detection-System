@@ -3,6 +3,7 @@ import time
 from typing import List, Dict
 from scapy.all import rdpcap, IP, TCP, UDP, ICMP
 import pandas as pd
+import numpy as np
 import joblib
 import json
 import uuid
@@ -104,8 +105,18 @@ class PCAPAnalyzer:
                 else:
                     input_df[col] = mapping.index('other') if 'other' in mapping else 0
             
-            prediction = self.model.predict(input_df)[0]
-            
+            prediction_label = self.model.predict(input_df)[0]
+
+            # Decode numeric prediction to string label
+            if isinstance(prediction_label, (int, np.integer)):
+                label_classes = self.metadata.get('label_encoder_classes', self.metadata.get('classes', []))
+                if label_classes and prediction_label < len(label_classes):
+                    prediction = label_classes[prediction_label]
+                else:
+                    prediction = str(prediction_label)
+            else:
+                prediction = prediction_label
+
             if prediction != "Normal":
                 summary["threats_detected"] += 1
                 summary["categories"][prediction] = summary["categories"].get(prediction, 0) + 1
