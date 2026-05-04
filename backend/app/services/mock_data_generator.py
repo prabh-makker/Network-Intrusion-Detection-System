@@ -1,47 +1,56 @@
 """Generate realistic mock threat data for training.
 
-Creates diverse threat scenarios:
-- Normal traffic (80%)
-- DoS attacks (10%)
-- DDoS (5%)
-- Probe/scanning (3%)
-- U2R/R2L (2%)
+Creates diverse threat scenarios using threat_configs for consistency
+with feature_engineering module.
 """
 
 import random
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Tuple, Dict, Callable
 from sqlalchemy.orm import Session
 from app.models.models import ThreatLog
 from uuid import uuid4
+
+from app.services.threat_configs import (
+    THREAT_TYPES,
+    PROTOCOLS,
+    SERVICES,
+    FLAGS,
+    INTERNAL_IP_PROBABILITY,
+    LOG_PREFIX_MOCK,
+    LOG_PREFIX_DAILY,
+)
 
 
 class MockDataGenerator:
     """Generate realistic mock threat data."""
 
-    THREAT_TYPES = {
-        "Normal": 0.80,
-        "DoS": 0.10,
-        "DDoS": 0.05,
-        "Probe": 0.03,
-        "U2R": 0.01,
-        "R2L": 0.01,
-    }
-
-    PROTOCOLS = ["TCP", "UDP", "ICMP"]
-    SERVICES = ["http", "ftp", "smtp", "ssh", "telnet", "domain_u", "private"]
-    FLAGS = ["SF", "S0", "REJ", "RSTR", "SH", "RST", "RSTO"]
+    # Import from threat_configs (single source of truth)
+    THREAT_TYPES_WITH_PROBS = THREAT_TYPES
+    PROTOCOLS = list(PROTOCOLS.keys())
+    SERVICES = list(SERVICES.keys())
+    FLAGS = list(FLAGS.keys())
 
     def __init__(self, seed=None):
         if seed:
             random.seed(seed)
             np.random.seed(seed)
 
+        # Dispatch dict for threat type generation (replaces if/elif chain)
+        self.threat_generators: Dict[str, Callable[[], dict]] = {
+            "Normal": self.generate_normal_traffic,
+            "DoS": self.generate_dos_attack,
+            "DDoS": self.generate_ddos_attack,
+            "Probe": self.generate_probe_attack,
+            "U2R": self.generate_u2r_attack,
+            "R2L": self.generate_r2l_attack,
+        }
+
     def generate_ip(self, is_internal=False) -> str:
         """Generate realistic IP address."""
-        if is_internal or random.random() < 0.3:
-            # Internal IPs
+        if is_internal or random.random() < INTERNAL_IP_PROBABILITY:
+            # Internal IPs (10.x.x.x)
             return f"10.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
         else:
             # External IPs
@@ -152,26 +161,19 @@ class MockDataGenerator:
     def generate_threat(self) -> Tuple[dict, str]:
         """Generate single threat record based on distribution.
 
+        Uses dispatch dict instead of if/elif chain for maintainability.
+
         Returns:
             Tuple of (feature_dict, threat_label)
         """
         threat_type = random.choices(
-            list(self.THREAT_TYPES.keys()),
-            weights=list(self.THREAT_TYPES.values())
+            list(self.THREAT_TYPES_WITH_PROBS.keys()),
+            weights=[self.THREAT_TYPES_WITH_PROBS[t]["probability"] for t in self.THREAT_TYPES_WITH_PROBS.keys()]
         )[0]
 
-        if threat_type == "Normal":
-            features = self.generate_normal_traffic()
-        elif threat_type == "DoS":
-            features = self.generate_dos_attack()
-        elif threat_type == "DDoS":
-            features = self.generate_ddos_attack()
-        elif threat_type == "Probe":
-            features = self.generate_probe_attack()
-        elif threat_type == "U2R":
-            features = self.generate_u2r_attack()
-        else:  # R2L
-            features = self.generate_r2l_attack()
+        # Dispatch to appropriate generator (clean, extensible)
+        generator = self.threat_generators[threat_type]
+        features = generator()
 
         return features, threat_type
 
@@ -185,7 +187,7 @@ class MockDataGenerator:
         Returns:
             Number of records inserted
         """
-        print(f"[Mock] Generating {n_samples} threat samples...")
+        print(f"{LOG_PREFIX_MOCK} Generating {n_samples} threat samples...")
 
         records = []
         base_time = datetime.utcnow() - timedelta(days=7)
@@ -214,11 +216,11 @@ class MockDataGenerator:
                 print(f"  Generated {i + 1}/{n_samples}")
 
         # Bulk insert
-        print(f"[Mock] Inserting {len(records)} records into database...")
+        print(f"{LOG_PREFIX_MOCK} Inserting {len(records)} records into database...")
         db.bulk_save_objects(records)
         db.commit()
 
-        print(f"[Mock] ✓ Inserted {len(records)} mock threat samples")
+        print(f"{LOG_PREFIX_MOCK} ✓ Inserted {len(records)} mock threat samples")
         return len(records)
 
 
@@ -239,11 +241,11 @@ def generate_and_train_daily(db: Session, n_samples: int = 2000) -> bool:
     """
     try:
         print("\n" + "="*70)
-        print("[Daily] Automated Mock Data Training Cycle")
+        print(f"{LOG_PREFIX_DAILY} Automated Mock Data Training Cycle")
         print("="*70)
 
         # Clear old data
-        print("\n[Daily] Step 1: Cleanup old mock data (>30 days)")
+        print(f"\n{LOG_PREFIX_DAILY} Step 1: Cleanup old mock data (>30 days)")
         cutoff = datetime.utcnow() - timedelta(days=30)
         old_count = db.query(ThreatLog).filter(ThreatLog.timestamp < cutoff).count()
         if old_count > 0:
@@ -254,25 +256,25 @@ def generate_and_train_daily(db: Session, n_samples: int = 2000) -> bool:
             print("  No old records to delete")
 
         # Generate mock data
-        print("\n[Daily] Step 2: Generate mock threat data")
+        print(f"\n{LOG_PREFIX_DAILY} Step 2: Generate mock threat data")
         generator = MockDataGenerator(seed=None)  # Different seed each day
         generated = generator.generate_dataset(db, n_samples=n_samples)
 
         # Train model
-        print("\n[Daily] Step 3: Train model on updated data")
+        print(f"\n{LOG_PREFIX_DAILY} Step 3: Train model on updated data")
         from app.services.ml_service import train_and_save_model
         success = train_and_save_model()
 
         if success:
             print("\n" + "="*70)
-            print("[Daily] ✓ Daily training cycle complete")
+            print(f"{LOG_PREFIX_DAILY} ✓ Daily training cycle complete")
             print("="*70 + "\n")
             return True
         else:
             return False
 
     except Exception as e:
-        print(f"\n[Daily] ✗ Daily cycle failed: {e}")
+        print(f"\n{LOG_PREFIX_DAILY} ✗ Daily cycle failed: {e}")
         import traceback
         traceback.print_exc()
         return False
