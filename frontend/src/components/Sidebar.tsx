@@ -16,11 +16,13 @@ import {
   BrainCircuit,
   Settings,
   Gauge,
+  Power,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { removeToken } from "@/lib/auth";
 
 const NAV_ITEMS = [
+  { href: "/startup", label: "System Boot", icon: Power },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/alerts", label: "Threat Alerts", icon: Bell },
   { href: "/map", label: "Geo-IP Map", icon: Globe },

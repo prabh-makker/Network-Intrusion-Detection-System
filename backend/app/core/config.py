@@ -2,11 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
 import logging
-import warnings
 
 logger = logging.getLogger(__name__)
-
-_INSECURE_KEY = "DEVELOPMENT_ONLY_INSECURE_KEY_REPLACE_IN_PROD"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -18,7 +15,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Network Intrusion Detection System"
     API_V1_STR: str = "/api/v1"
 
-    SECRET_KEY: str = os.getenv("SECRET_KEY", _INSECURE_KEY)
+    # In production, SECRET_KEY MUST be set via environment variable
+    SECRET_KEY: str = os.getenv("SECRET_KEY") or "dev-key-not-for-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 90  # 90 days
 
@@ -46,9 +44,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-if settings.SECRET_KEY == _INSECURE_KEY:
-    warnings.warn(
-        "SECRET_KEY is using the insecure development default. "
-        "Set the SECRET_KEY environment variable before deploying to production.",
-        stacklevel=2,
+# Validate SECRET_KEY in production
+_PROD_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower() == "production"
+if _PROD_ENVIRONMENT and (not os.getenv("SECRET_KEY") or settings.SECRET_KEY == "dev-key-not-for-production"):
+    raise ValueError(
+        "CRITICAL: SECRET_KEY environment variable must be set before deploying to production. "
+        "Generate a secure key: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
     )
