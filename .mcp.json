@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "gh",
+      "args": ["api"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["context7"]
+    }
+  }
+}

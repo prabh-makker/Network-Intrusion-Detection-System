@@ -127,7 +127,51 @@
       "Bash(git commit -m 'fix: backend/frontend updates and dependencies *)",
       "Bash(git commit -m 'fix: Complete demo requirements + security hardening *)",
       "Bash(git commit -m 'audit: verify error handling and builtin shadowing *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(claude mcp *)",
+      "PowerShell(\\(Get-Content 'C:\\\\Users\\\\khalo\\\\EXAMPLE\\\\.claude\\\\settings.local.json' | Measure-Object -Line\\).Lines)"
+    ],
+    "deny": [
+      "Edit(.env)",
+      "Edit(.env.local)",
+      "Edit(*.joblib)",
+      "Write(.env)",
+      "Write(*.joblib)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Protection: Cannot edit secrets or model files'",
+            "if": "Edit(.env*)|Write(.env*)|Edit(*.joblib)|Write(*.joblib)"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write {file}",
+            "if": "Edit(*.tsx)|Edit(*.ts)",
+            "async": true,
+            "statusMessage": "Formatting TypeScript..."
+          },
+          {
+            "type": "command",
+            "command": "ruff format {file}",
+            "if": "Edit(*.py)",
+            "async": true,
+            "statusMessage": "Formatting Python..."
+          }
+        ]
+      }
     ]
   }
 }
