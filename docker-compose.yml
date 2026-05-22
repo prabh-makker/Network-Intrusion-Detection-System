@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  # ========================================================
+  # NIDS Backend API (FastAPI + XGBoost)
+  # ========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nids-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8001"
+    environment:
+      # Database configuration — points to mounted volume path
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/nids.db}
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-dev-key-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      # API configuration
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      # ML Models
+      - MODEL_DIR=/app/shared-models
+      # Python settings
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Shared model volume (read/write for training)
+      - nids-models:/app/shared-models
+      # Database volume — mount only DB file, not whole /app (preserves image code)
+      - nids-db:/app/data
+    networks:
+      - nids-network
+    # Health check (defined in Dockerfile but can be overridden)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ========================================================
+  # NIDS Frontend (Next.js 16 + React 19)
+  # ========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nids-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Next.js configuration
+      - PORT=3000
+      - HOST=0.0.0.0
+      # Override Docker auto-set HOSTNAME so Next.js binds to 0.0.0.0 (not container id)
+      - HOSTNAME=0.0.0.0
+      # API endpoint for frontend to connect to
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      # Node environment
+      - NODE_ENV=${ENVIRONMENT:-production}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - nids-network
+    # Health check (defined in Dockerfile but can be overridden)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # Resource limits (frontend uses less resources)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ========================================================
+  # NIDS Sniffer (Live packet capture + ML inference)
+  # Requires: host network, NET_ADMIN, NET_RAW capabilities
+  # ========================================================
+  sniffer:
+    build:
+      context: ./sniffer
+      dockerfile: Dockerfile
+    container_name: nids-sniffer
+    restart: unless-stopped
+    # Mock mode uses internal docker network (talks to nids-backend service)
+    # For real packet capture (Linux only) set SNIFFER_MODE=real + uncomment host network
+    # network_mode: host
+    networks:
+      - nids-network
+    environment:
+      # Backend API endpoint (mock mode uses service name, real mode uses localhost)
+      - API_ENDPOINT=${API_ENDPOINT:-http://nids-backend:8001/api/v1/traffic/log}
+      # Shared ML models location
+      - MODEL_DIR=/app/shared-models
+      # Sniffer mode: 'mock' (Docker-friendly) or 'real' (scapy, Linux host network only)
+      - SNIFFER_MODE=${SNIFFER_MODE:-mock}
+      # Python settings
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Shared model volume (read-only for inference)
+      - nids-models:/app/shared-models:ro
+    # Capabilities for packet capture
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      backend:
+        condition: service_healthy
+    # Health check: verify can reach backend (mock sniffer needs backend)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-s", "-o", "/dev/null", "http://nids-backend:8001/docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Resource limits (sniffer can use more if needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================================
+# Volumes: Persist data across container restarts
+# ============================================================
+volumes:
+  # ML models (shared across backend, sniffer, training)
+  nids-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${MODEL_VOLUME_PATH:-./models}
+
+  # Database (SQLite or PostgreSQL connection)
+  nids-db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DB_VOLUME_PATH:-./data}
+
+# ============================================================
+# Networks: Isolated network for internal communication
+# ============================================================
+networks:
+  nids-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+

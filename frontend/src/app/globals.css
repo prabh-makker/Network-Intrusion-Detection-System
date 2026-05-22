@@ -20,13 +20,49 @@
 }
 
 :root.light {
-  --background: #ede9fe;
-  --foreground: #1e1042;
-  --glass-bg: rgba(49, 10, 101, 0.1);
-  --glass-border: rgba(49, 10, 101, 0.15);
-  --muted: #4c1d95;
-  --card-bg: rgba(49, 10, 101, 0.08);
-  --card-border: rgba(49, 10, 101, 0.18);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(15, 23, 42, 0.15);
+  --muted: #475569;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(15, 23, 42, 0.18);
+}
+
+/* LIGHT MODE - Force readable text on all dashboard elements */
+:root.light .text-purple-200,
+:root.light .text-purple-300,
+:root.light .text-purple-400 {
+  color: #4c1d95 !important;
+}
+
+:root.light .text-cyan-300,
+:root.light .text-cyan-400 {
+  color: #0e7490 !important;
+}
+
+:root.light .text-white {
+  color: #0f172a !important;
+}
+
+:root.light .text-gray-300,
+:root.light .text-gray-400 {
+  color: #475569 !important;
+}
+
+/* Light mode card backgrounds */
+:root.light .bg-black\/40,
+:root.light .bg-black\/30,
+:root.light .bg-black\/50 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* Light mode borders */
+:root.light .border-purple-500\/30,
+:root.light .border-purple-500\/20,
+:root.light .border-purple-500\/10 {
+  border-color: rgba(124, 58, 237, 0.3) !important;
 }
 
 * {

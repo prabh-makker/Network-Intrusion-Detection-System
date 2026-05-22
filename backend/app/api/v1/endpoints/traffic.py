@@ -1,4 +1,5 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query, status
+from pathlib import Path
 import asyncio
 import json
 import logging
@@ -128,21 +129,27 @@ async def upload_pcap(
     current_user=Depends(deps.get_current_active_user)
 ):
     """Securely upload and analyze a PCAP file for historical threats."""
-    if not file.filename.endswith('.pcap'):
-        return {"error": "Only .pcap files are supported"}
-    
-    # Save temp file
+    if Path(file.filename or "").suffix.lower() != ".pcap":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .pcap files are supported")
+
+    safe_filename = os.path.basename(file.filename or "")
     temp_path = f"temp_{uuid.uuid4()}.pcap"
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    
+
     try:
         results = pcap_analyzer.analyze(temp_path, db)
         return {
             "status": "completed",
-            "filename": file.filename,
+            "filename": safe_filename,
             "analysis": results
         }
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or unsupported PCAP file")
+    except RuntimeError:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="ML model not available — contact the administrator")
     finally:
-        if os.path.exists(temp_path):
+        try:
             os.remove(temp_path)
+        except FileNotFoundError:
+            pass

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertCircle, Loader, Server, Zap, Shield, Activity } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader, Server, Zap, Shield, Activity, Power } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
 interface BootStep {
@@ -14,23 +14,40 @@ interface BootStep {
 
 export default function SystemStartupPage() {
   const { isDark } = useTheme();
-  const [bootSteps, setBootSteps] = useState<BootStep[]>([
-    { name: "BIOS POST (Power-On Self Test)", status: "complete", duration: 0.8 },
-    { name: "Boot Loader Initialization", status: "complete", duration: 0.5 },
-    { name: "Kernel Loading", status: "complete", duration: 1.2 },
-    { name: "System Services Startup", status: "complete", duration: 0.9 },
-    { name: "Database Initialization", status: "complete", duration: 1.5 },
-    { name: "API Server Start (Port 8001)", status: "complete", duration: 0.6 },
-    { name: "WebSocket Service Ready", status: "complete", duration: 0.4 },
-    { name: "Packet Sniffer Activation", status: "complete", duration: 0.8 },
-    { name: "ML Model Loading", status: "complete", duration: 2.1 },
-    { name: "Threat Detection Engine Ready", status: "complete", duration: 0.5 },
+  const [bootSteps] = useState<BootStep[]>([
+    { name: "BIOS POST (Power-On Self Test)", status: "pending", duration: 0.8 },
+    { name: "Boot Loader Initialization", status: "pending", duration: 0.5 },
+    { name: "Kernel Loading", status: "pending", duration: 1.2 },
+    { name: "System Services Startup", status: "pending", duration: 0.9 },
+    { name: "Database Initialization", status: "pending", duration: 1.5 },
+    { name: "API Server Start (Port 8001)", status: "pending", duration: 0.6 },
+    { name: "WebSocket Service Ready", status: "pending", duration: 0.4 },
+    { name: "Packet Sniffer Activation", status: "pending", duration: 0.8 },
+    { name: "ML Model Loading", status: "pending", duration: 2.1 },
+    { name: "Threat Detection Engine Ready", status: "pending", duration: 0.5 },
   ]);
 
   const [bootTime, setBootTime] = useState(0);
   const [systemReady, setSystemReady] = useState(false);
+  const [bootStarted, setBootStarted] = useState(false);
+
+  // Manual boot trigger - only starts when user clicks BOOT SYSTEM button
+  const handleManualBoot = () => {
+    setBootStarted(true);
+    setBootTime(0);
+    setSystemReady(false);
+  };
+
+  // Reset the boot state to shutdown
+  const handleShutdown = () => {
+    setBootStarted(false);
+    setBootTime(0);
+    setSystemReady(false);
+  };
 
   useEffect(() => {
+    if (!bootStarted) return;
+
     let elapsed = 0;
     const interval = setInterval(() => {
       elapsed += 0.1;
@@ -41,7 +58,7 @@ export default function SystemStartupPage() {
       }
     }, 100);
     return () => clearInterval(interval);
-  }, []);
+  }, [bootStarted]);
 
   const totalTime = bootSteps.reduce((sum, step) => sum + step.duration, 0);
 
@@ -102,7 +119,7 @@ export default function SystemStartupPage() {
             key={i}
             className="absolute w-1 h-1 rounded-full bg-green-400"
             animate={{
-              y: [0, -window.innerHeight],
+              y: [0, -(typeof window !== "undefined" ? window.innerHeight : 800)],
               opacity: [0, 1, 0],
             }}
             transition={{
@@ -141,7 +158,45 @@ export default function SystemStartupPage() {
         {/* ── Content ── */}
         <div className="flex-1 w-full px-6 py-12">
           <div className="max-w-4xl mx-auto">
-            {/* Boot Progress */}
+            {/* Manual Boot Control Panel */}
+            {!bootStarted && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`rounded-2xl p-12 border mb-8 text-center ${
+                  isDark
+                    ? "border-red-500/30 bg-gradient-to-br from-red-900/20 to-orange-900/10"
+                    : "border-red-400/20 bg-red-950/10"
+                } backdrop-blur-xl`}
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-red-600 to-red-800 mb-6 shadow-xl shadow-red-500/40"
+                >
+                  <Power size={40} className="text-white" />
+                </motion.div>
+                <h2 className={`text-3xl font-bold mb-2 ${isDark ? "text-white" : "text-red-950"}`}>
+                  System Offline
+                </h2>
+                <p className={`text-sm mb-6 ${isDark ? "text-red-300" : "text-red-800"}`}>
+                  NIDS Sentinel is currently powered down. Click below to manually boot the system.
+                </p>
+                <button
+                  onClick={handleManualBoot}
+                  className="px-8 py-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold text-lg shadow-lg shadow-green-500/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto"
+                >
+                  <Power size={20} />
+                  BOOT SYSTEM
+                </button>
+                <p className={`text-xs mt-4 ${isDark ? "text-red-400" : "text-red-700"}`}>
+                  Manual control required • Estimated boot time: ~8 seconds
+                </p>
+              </motion.div>
+            )}
+
+            {/* Boot Progress - Only shown when boot is started */}
+            {bootStarted && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -157,7 +212,7 @@ export default function SystemStartupPage() {
                     Boot Progress
                   </h2>
                   <p className={`text-sm mt-1 ${isDark ? "text-green-300" : "text-green-800"}`}>
-                    System initialization in progress
+                    {systemReady ? "System is online and ready" : "System initialization in progress"}
                   </p>
                 </div>
                 <div className="text-right">
@@ -169,6 +224,15 @@ export default function SystemStartupPage() {
                   </p>
                 </div>
               </div>
+              {systemReady && (
+                <button
+                  onClick={handleShutdown}
+                  className="mb-4 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center gap-2"
+                >
+                  <Power size={14} />
+                  Shutdown System
+                </button>
+              )}
 
               {/* Progress Bar */}
               <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-black/10"}`}>
@@ -196,8 +260,10 @@ export default function SystemStartupPage() {
                 )}
               </div>
             </motion.div>
+            )}
 
-            {/* Boot Steps */}
+            {/* Boot Steps - Only when boot is started */}
+            {bootStarted && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -211,9 +277,10 @@ export default function SystemStartupPage() {
                 <BootStepItem key={idx} step={step} index={idx} />
               ))}
             </motion.div>
+            )}
 
             {/* System Info */}
-            {systemReady && (
+            {bootStarted && systemReady && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

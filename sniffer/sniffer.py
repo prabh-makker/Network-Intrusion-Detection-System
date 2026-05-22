@@ -8,27 +8,25 @@ import pandas as pd
 import numpy as np
 import os
 from collections import deque
+from model_loader import load_model_and_metadata
 
 # Config
-API_ENDPOINT = "http://localhost:8001/api/v1/traffic/log"
-MODEL_PATH = "models/nids_rf_model.joblib"
-METADATA_PATH = "models/model_metadata.json"
+API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8001/api/v1/traffic/log")
+MODEL_DIR = os.getenv("MODEL_DIR", "/app/shared-models")
 
 # State trackers for "Window Features"
 connection_window = deque(maxlen=200) # Increased window for better rate calculation
 
-# Load model
-try:
-    print(f"Loading Model: {MODEL_PATH}")
-    model = joblib.load(MODEL_PATH)
-    with open(METADATA_PATH, 'r') as f:
-        metadata = json.load(f)
-    print("Model and Metadata loaded successfully.")
-    print(f"Detected Classes: {metadata['classes']}")
-except Exception as e:
-    print(f"ERROR: Could not load model: {e}")
-    model = None
-    metadata = None
+# Load model from shared volume using unified loader
+print(f"[Sniffer] Loading model from {MODEL_DIR}")
+model, metadata = load_model_and_metadata(model_name="nids_xgb_hybrid")
+
+if model and metadata:
+    print("[Sniffer] Model and Metadata loaded successfully.")
+    print(f"[Sniffer] Detected Classes: {metadata.get('threat_classes', metadata.get('classes', []))}")
+else:
+    print("[Sniffer] ERROR: Could not load model from shared volume")
+    print(f"[Sniffer] Expected model at: {MODEL_DIR}/nids_xgb.pkl")
 
 def get_service_name(port):
     if port == 80 or port == 443: return "http"

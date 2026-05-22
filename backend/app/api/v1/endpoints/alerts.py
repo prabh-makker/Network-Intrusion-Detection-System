@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from app.db.session import get_db
 from app.models.models import ThreatLog
 from app.api import deps
-from typing import Optional
+from typing import Optional, List
 from app.services.pdf_report import generate_threat_pdf
+from app.services.firewall_service import firewall_service
 import requests as http_requests
+import uuid
 
 router = APIRouter()
 
@@ -87,25 +89,102 @@ async def get_alert_stats(
     db: Session = Depends(get_db),
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Get aggregated threat statistics."""
+    """Get aggregated threat statistics with blocked/active breakdown."""
     total = db.query(func.count(ThreatLog.id)).scalar() or 0
+    blocked_count = db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True).scalar() or 0
+    active_count = total - blocked_count
+
     by_label = (
         db.query(ThreatLog.label, func.count(ThreatLog.id))
         .group_by(ThreatLog.label)
         .all()
     )
+    # Top sources should only count UNBLOCKED threats (active attackers)
     top_sources = (
         db.query(ThreatLog.src_ip, func.count(ThreatLog.id).label("count"))
+        .filter(ThreatLog.is_blocked == False)
         .group_by(ThreatLog.src_ip)
         .order_by(desc("count"))
         .limit(10)
         .all()
     )
-    
+
     return {
         "total_threats": total,
+        "active_threats": active_count,
+        "blocked_threats": blocked_count,
         "by_label": {label: count for label, count in by_label},
         "top_sources": [{"ip": ip, "count": c} for ip, c in top_sources],
+    }
+
+
+@router.post("/bulk-block")
+async def bulk_block_threats(
+    alert_ids: List[str] = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Block multiple threats at once."""
+    blocked = []
+    failed = []
+
+    for alert_id_str in alert_ids:
+        try:
+            alert_id_uuid = uuid.UUID(alert_id_str)
+            alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id_uuid).first()
+            if alert and not alert.is_blocked:
+                firewall_service.block_ip(alert.src_ip)
+                alert.is_blocked = True
+                blocked.append({"id": alert_id_str, "ip": alert.src_ip})
+            elif alert and alert.is_blocked:
+                failed.append({"id": alert_id_str, "reason": "already_blocked"})
+            else:
+                failed.append({"id": alert_id_str, "reason": "not_found"})
+        except ValueError:
+            failed.append({"id": alert_id_str, "reason": "invalid_id"})
+        except Exception as e:
+            failed.append({"id": alert_id_str, "reason": str(e)})
+
+    db.commit()
+    return {
+        "status": "completed",
+        "blocked_count": len(blocked),
+        "failed_count": len(failed),
+        "blocked": blocked,
+        "failed": failed,
+    }
+
+
+@router.post("/block-all-active")
+async def block_all_active_threats(
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Block ALL active (unblocked) threats in the database."""
+    active_alerts = db.query(ThreatLog).filter(
+        ThreatLog.is_blocked == False,
+        ThreatLog.label != "Normal"
+    ).all()
+
+    blocked_ips = set()
+    blocked_count = 0
+
+    for alert in active_alerts:
+        if alert.src_ip not in blocked_ips:
+            try:
+                firewall_service.block_ip(alert.src_ip)
+                blocked_ips.add(alert.src_ip)
+            except Exception:
+                pass
+        alert.is_blocked = True
+        blocked_count += 1
+
+    db.commit()
+    return {
+        "status": "completed",
+        "blocked_count": blocked_count,
+        "unique_ips_blocked": len(blocked_ips),
+        "blocked_ips": list(blocked_ips)[:20],  # Cap response size
     }
 
 @router.get("/timeline")
@@ -129,8 +208,8 @@ async def get_threat_timeline(
         label_fmt = "%b %d"
         periods = 30
         delta = timedelta(days=1)
-    else:  # 24h default
-        since = now - timedelta(hours=24)
+    else:  # 24h default — show 24 hours of data ending now
+        since = now - timedelta(hours=23)  # 23 + the current partial hour = 24 hours
         label_fmt = "%H:00"
         periods = 24
         delta = timedelta(hours=1)
@@ -139,9 +218,9 @@ async def get_threat_timeline(
     from sqlalchemy import func as sql_func, cast, String
 
     if time_range == "7d" or time_range == "30d":
-        group_expr = cast(ThreatLog.timestamp, String).substr(1, 10)  # YYYY-MM-DD
+        group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 10)  # YYYY-MM-DD
     else:  # 24h
-        group_expr = cast(ThreatLog.timestamp, String).substr(1, 13)  # YYYY-MM-DD HH
+        group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 13)  # YYYY-MM-DD HH
 
     rows = (
         db.query(
@@ -162,8 +241,8 @@ async def get_threat_timeline(
             key = period_start.strftime("%Y-%m-%d")
         elif time_range == "30d":
             key = period_start.strftime("%Y-%m-%d")
-        else:  # 24h
-            key = period_start.strftime("%Y-%m-%d %H:00")
+        else:  # 24h — must match the 13-char substr "YYYY-MM-DD HH"
+            key = period_start.strftime("%Y-%m-%d %H")
         label = period_start.strftime(label_fmt)
         threats = db_map.get(key, 0)
         result.append({"time": label, "threats": threats, "traffic": threats * 5 + 50})
@@ -172,14 +251,13 @@ async def get_threat_timeline(
 
 @router.get("/explain/{label}")
 async def explain_threat(
-
     label: str,
     current_user=Depends(deps.get_current_active_user)
 ):
     """AI Explainability endpoint - returns why the model flagged this threat type."""
     explanation = FEATURE_IMPORTANCE.get(label)
     if not explanation:
-        return {"error": f"No explanation available for label: {label}"}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No explanation available for the requested threat label")
     return {
         "label": label,
         **explanation
@@ -207,7 +285,32 @@ async def geoip_lookup(
     ip: str,
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Server-side proxy for ip-api.com to avoid CORS/browser restrictions. Results cached to prevent rate limiting."""
+    """Server-side proxy for ip-api.com to avoid CORS/browser restrictions. Results cached to prevent rate limiting.
+
+    Validates IP addresses and rejects non-routable/dangerous IPs.
+    """
+    from ipaddress import ip_address, AddressValueError
+
+    # Validate IP format
+    try:
+        ip_obj = ip_address(ip)
+    except (ValueError, AddressValueError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid IP address format")
+
+    # Reject non-routable IPs (same logic as firewall_service._validate_ip)
+    if ip_obj.is_private:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate private IP addresses")
+    if ip_obj.is_loopback:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate loopback IP addresses")
+    if ip_obj.is_reserved:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate reserved IP addresses")
+    if ip_obj.is_link_local:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate link-local IP addresses")
+    if ip_obj.is_multicast:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate multicast IP addresses")
+    if ip_obj.is_unspecified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot geolocate unspecified IP addresses")
+
     # Check cache first
     if ip in _geoip_cache:
         return _geoip_cache[ip]
@@ -227,7 +330,7 @@ import uuid
 
 @router.post("/{alert_id}/block")
 async def block_threat(
-    alert_id: str, 
+    alert_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(deps.get_current_active_user)
 ):
@@ -235,11 +338,11 @@ async def block_threat(
     try:
         alert_id_uuid = uuid.UUID(alert_id)
     except ValueError:
-        return {"error": "Invalid alert ID format"}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid alert ID format — must be a valid UUID")
 
     alert = db.query(ThreatLog).filter(ThreatLog.id == alert_id_uuid).first()
     if not alert:
-        return {"error": "Alert not found"}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
     
     # Active Defense: Ban the IP via pfctl/iptables
     firewall_status = firewall_service.block_ip(alert.src_ip)

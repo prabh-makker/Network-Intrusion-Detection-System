@@ -7,28 +7,31 @@ import numpy as np
 import joblib
 import json
 import uuid
+import logging
 from sqlalchemy.orm import Session
 from app.models.models import ThreatLog
 from app.core.config import settings
+from app.core.model_loader import ModelLoader
 
-# Path relative to backend root
-MODEL_PATH = os.path.join(os.getcwd(), "..", "sniffer", "models", "nids_rf_model.joblib")
-METADATA_PATH = os.path.join(os.getcwd(), "..", "sniffer", "models", "model_metadata.json")
+logger = logging.getLogger(__name__)
 
 class PCAPAnalyzer:
     def __init__(self):
         self.model = None
         self.metadata = None
         self._load_model()
-        
+
     def _load_model(self):
+        """Load model and metadata using unified ModelLoader."""
         try:
-            if os.path.exists(MODEL_PATH):
-                self.model = joblib.load(MODEL_PATH)
-                with open(METADATA_PATH, 'r') as f:
-                    self.metadata = json.load(f)
+            # Try to load using unified loader first (supports both old and new paths)
+            self.model = ModelLoader.load_model(model_name="nids_xgb")
+            self.metadata = ModelLoader.load_metadata(model_name="nids_xgb")
+
+            if self.model is None:
+                logger.warning("Model not found in shared models directory")
         except Exception as e:
-            print(f"PCAP Service: Could not load model - {e}")
+            logger.error(f"PCAP Service: Could not load model - {e}")
 
     def get_service_name(self, port):
         if port == 80 or port == 443: return "http"
@@ -40,12 +43,12 @@ class PCAPAnalyzer:
 
     def analyze(self, file_path: str, db: Session) -> Dict:
         if not self.model or not self.metadata:
-            return {"error": "AI Model not initialized on server"}
+            raise RuntimeError("AI model not initialized on server")
 
         try:
             packets = rdpcap(file_path)
         except Exception as e:
-            return {"error": f"Invalid PCAP file: {e}"}
+            raise ValueError(f"Invalid PCAP file: {e}") from e
 
         summary = {
             "packets_processed": 0,

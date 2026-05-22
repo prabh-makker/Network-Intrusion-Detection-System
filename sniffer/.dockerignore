@@ -1,0 +1,55 @@
+# Python bytecode and caches
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Development
+.git
+.gitignore
+.env
+.env.local
+*.log
+debug.log
+
+# Models and data
+models/
+*.pkl
+*.joblib
+pcap_files/
+*.pcap
+*.cap
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Temporary files
+*.tmp
+tmp/

@@ -21,13 +21,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.models import ThreatLog
 from app.services.feature_engineering import FeatureEngineer
-
-
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-os.makedirs(MODEL_DIR, exist_ok=True)
-
-MODEL_PATH = os.path.join(MODEL_DIR, "threat_model.joblib")
-METADATA_PATH = os.path.join(MODEL_DIR, "model_metadata.json")
+from app.core.model_loader import ModelLoader
 
 
 def get_training_data(db: Session, limit: Optional[int] = None) -> Tuple[pd.DataFrame, np.ndarray]:
@@ -214,16 +208,20 @@ def train_and_save_model() -> bool:
         else:
             print(f"[ML] ⚠ Below target (95%), continue tuning")
 
-        # Save model
+        # Save model and metadata using unified loader
         print("\n[ML] Phase 4: Model Persistence")
         print("-" * 70)
-        print(f"[ML] Saving model to {MODEL_PATH}")
-        joblib.dump(model, MODEL_PATH, compress=3)
 
-        # Save metadata
-        with open(METADATA_PATH, 'w') as f:
-            json.dump(metadata, f, indent=2)
-        print(f"[ML] Metadata saved to {METADATA_PATH}")
+        # Extract scaler info from metadata for separate persistence
+        scaler_metadata = {
+            "mean": metadata.get("scaler_mean", []),
+            "scale": metadata.get("scaler_scale", [])
+        }
+
+        # Save model with metadata
+        ModelLoader.save_model(model, model_name="nids_xgb", metadata=metadata)
+        print(f"[ML] Model saved to {ModelLoader.get_model_path('nids_xgb')}")
+        print(f"[ML] Metadata saved to {ModelLoader.get_metadata_path('nids_xgb')}")
 
         print("\n" + "="*70)
         print("[ML] ✓ Retraining Complete — Ready for Production")

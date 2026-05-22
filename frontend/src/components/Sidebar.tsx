@@ -17,6 +17,8 @@ import {
   Settings,
   Gauge,
   Power,
+  Radio,
+  TrendingUp,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { removeToken } from "@/lib/auth";
@@ -24,6 +26,8 @@ import { removeToken } from "@/lib/auth";
 const NAV_ITEMS = [
   { href: "/startup", label: "System Boot", icon: Power },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics", icon: TrendingUp },
+  { href: "/connections", label: "Connections", icon: Radio },
   { href: "/alerts", label: "Threat Alerts", icon: Bell },
   { href: "/map", label: "Geo-IP Map", icon: Globe },
   { href: "/ml", label: "ML Analytics", icon: BrainCircuit },

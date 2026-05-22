@@ -15,10 +15,12 @@ interface Toast {
 
 interface ToastContextType {
   toast: (type: ToastType, title: string, message?: string) => void;
+  showToast: (type: ToastType, title: string, message?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType>({
   toast: () => {},
+  showToast: () => {},
 });
 
 const ICONS: Record<ToastType, React.ReactNode> = {
@@ -53,7 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ toast: addToast }}>
+    <ToastContext.Provider value={{ toast: addToast, showToast: addToast }}>
       {children}
       <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
         <AnimatePresence>

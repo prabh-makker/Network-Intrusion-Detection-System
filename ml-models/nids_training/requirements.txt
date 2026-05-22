@@ -4,3 +4,7 @@ numpy
 joblib
 matplotlib
 seaborn
+xgboost
+certifi
+imbalanced-learn
+optuna
