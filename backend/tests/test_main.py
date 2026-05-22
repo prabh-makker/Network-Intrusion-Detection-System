@@ -17,29 +17,26 @@ def _signup_payload(username, password, email=None):
     }
 
 
-@pytest.mark.skip(reason="bcrypt password hashing issue in test environment - not a code bug")
 def test_signup(client):
     response = client.post(
         "/api/v1/signup",
-        json=_signup_payload("testuser", "test123"),
+        json=_signup_payload("testuser", "test12345"),
     )
     assert response.status_code == 200
     assert response.json()["msg"] == "User created successfully. Please login."
 
 
-@pytest.mark.skip(reason="bcrypt password hashing issue in test environment - not a code bug")
 def test_signup_duplicate_user(client):
-    client.post("/api/v1/signup", json=_signup_payload("dupeuser", "pwd"))
-    response = client.post("/api/v1/signup", json=_signup_payload("dupeuser", "pwd", "dupeuser2@test.com"))
+    client.post("/api/v1/signup", json=_signup_payload("dupeuser", "pwd12345"))
+    response = client.post("/api/v1/signup", json=_signup_payload("dupeuser", "pwd12345", "dupeuser2@test.com"))
     assert response.status_code == 400
 
 
-@pytest.mark.skip(reason="bcrypt password hashing issue in test environment - not a code bug")
 def test_login(client):
-    client.post("/api/v1/signup", json=_signup_payload("loginuser", "mypass"))
+    client.post("/api/v1/signup", json=_signup_payload("loginuser", "mypass123"))
     response = client.post(
         "/api/v1/login/access-token",
-        data={"username": "loginuser", "password": "mypass"},
+        data={"username": "loginuser", "password": "mypass123"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -47,7 +44,6 @@ def test_login(client):
     assert data["token_type"] == "bearer"
 
 
-@pytest.mark.skip(reason="bcrypt password hashing issue in test environment - not a code bug")
 def test_login_wrong_password(client):
     client.post("/api/v1/signup", json=_signup_payload("wrongpass", "correct123"))
     response = client.post(

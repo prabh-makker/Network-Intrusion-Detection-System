@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Network Intrusion Detection System"
     API_V1_STR: str = "/api/v1"
 
-    # In production, SECRET_KEY MUST be set via environment variable
-    SECRET_KEY: str = os.getenv("SECRET_KEY") or "dev-key-not-for-production"
+    # In production, SECRET_KEY MUST be set via environment variable (min 32 chars)
+    SECRET_KEY: str = os.getenv("SECRET_KEY") or "dev-key-not-for-production-replace-me"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 90  # 90 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours (security best practice)
 
     CORS_ORIGINS: str = os.getenv(
         "CORS_ORIGINS",
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM: str = os.getenv("SMTP_FROM", "")
 
+    # ENVIRONMENT
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+
     # ALERTS
     DISCORD_WEBHOOK_URL: Optional[str] = os.getenv("DISCORD_WEBHOOK_URL")
 
@@ -46,7 +49,12 @@ settings = Settings()
 
 # Validate SECRET_KEY in production
 _PROD_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower() == "production"
-if _PROD_ENVIRONMENT and (not os.getenv("SECRET_KEY") or settings.SECRET_KEY == "dev-key-not-for-production"):
+_DEV_KEY = "dev-key-not-for-production-replace-me"
+if _PROD_ENVIRONMENT and (
+    not os.getenv("SECRET_KEY")
+    or settings.SECRET_KEY == _DEV_KEY
+    or len(settings.SECRET_KEY) < 32
+):
     raise ValueError(
         "CRITICAL: SECRET_KEY environment variable must be set before deploying to production. "
         "Generate a secure key: python -c \"import secrets; print(secrets.token_urlsafe(32))\""

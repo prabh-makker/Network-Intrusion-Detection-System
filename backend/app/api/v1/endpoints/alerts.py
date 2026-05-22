@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, status, Body
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.db.session import get_db
 from app.models.models import ThreatLog
 from app.api import deps
@@ -12,6 +14,7 @@ import requests as http_requests
 import uuid
 
 router = APIRouter()
+_geoip_limiter = Limiter(key_func=get_remote_address)
 
 # AI Explainability data - feature importance from trained Random Forest
 FEATURE_IMPORTANCE = {
@@ -278,12 +281,67 @@ async def export_alerts_pdf(
         headers={"Content-Disposition": "attachment; filename=nids-threat-report.pdf"}
     )
 
-_geoip_cache: dict[str, dict] = {}  # Simple LRU cache for GeoIP results
+_geoip_cache: dict[str, dict] = {}  # Simple in-memory cache for GeoIP results
+
+@router.get("/by-severity")
+async def get_alerts_by_severity(
+    severity: str = Query(default="high"),
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Filter alerts by severity label."""
+    alerts = db.query(ThreatLog).filter(
+        ThreatLog.label.ilike(f"%{severity}%")
+    ).order_by(desc(ThreatLog.timestamp)).limit(100).all()
+    return [
+        {
+            "id": str(a.id),
+            "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+            "src_ip": a.src_ip,
+            "label": a.label,
+            "confidence": a.confidence,
+            "is_blocked": a.is_blocked,
+        }
+        for a in alerts
+    ]
+
+
+@router.get("/date-range")
+async def get_alerts_date_range(
+    start: str = Query(...),
+    end: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Filter alerts by date range."""
+    from datetime import datetime
+    try:
+        start_dt = datetime.fromisoformat(start)
+        end_dt = datetime.fromisoformat(end)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+    alerts = db.query(ThreatLog).filter(
+        ThreatLog.timestamp >= start_dt,
+        ThreatLog.timestamp <= end_dt
+    ).order_by(desc(ThreatLog.timestamp)).limit(500).all()
+    return [
+        {
+            "id": str(a.id),
+            "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+            "src_ip": a.src_ip,
+            "label": a.label,
+            "confidence": a.confidence,
+            "is_blocked": a.is_blocked,
+        }
+        for a in alerts
+    ]
+
 
 @router.get("/geoip/{ip}")
+@_geoip_limiter.limit("60/minute")
 async def geoip_lookup(
+    request: Request,
     ip: str,
-    current_user=Depends(deps.get_current_active_user)
 ):
     """Server-side proxy for ip-api.com to avoid CORS/browser restrictions. Results cached to prevent rate limiting.
 

@@ -8,6 +8,9 @@ Tests:
 - Network connectivity
 - Environment configuration
 - Resource limits
+
+These tests require the project root (containing docker-compose.yml).
+They are skipped automatically when run from inside a container.
 """
 import pytest
 import subprocess
@@ -15,7 +18,35 @@ import json
 import os
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Project-root detection — walk up from this file to find docker-compose.yml
+# ---------------------------------------------------------------------------
+def _find_project_root() -> Path | None:
+    # Fixed location used when tests run inside the Docker container
+    known = Path("/nids_root")
+    if (known / "docker-compose.yml").exists():
+        return known
+    # Walk up from this file (works when running from host project root)
+    current = Path(__file__).resolve().parent
+    for _ in range(10):
+        if (current / "docker-compose.yml").exists():
+            return current
+        current = current.parent
+    return None
 
+PROJECT_ROOT = _find_project_root()
+
+# Change CWD to project root so relative Path("backend/Dockerfile") works
+if PROJECT_ROOT:
+    os.chdir(PROJECT_ROOT)
+
+_needs_root = pytest.mark.skipif(
+    PROJECT_ROOT is None,
+    reason="Skipped: docker-compose.yml not found — run from project root"
+)
+
+
+@_needs_root
 class TestDockerfileValidity:
     """Test Dockerfile configurations"""
 
@@ -50,6 +81,7 @@ class TestDockerfileValidity:
         assert dockerignore.exists()
 
 
+@_needs_root
 class TestDockerCompose:
     """Test docker-compose configuration"""
 
@@ -150,6 +182,7 @@ class TestDockerCompose:
         assert "healthcheck" in backend or "health_check" in backend
 
 
+@_needs_root
 class TestVolumesAndNetworking:
     """Test volume and network configuration"""
 
@@ -232,6 +265,7 @@ class TestEnvironmentConfiguration:
             assert ".env" in content or ".env.local" in content
 
 
+@_needs_root
 class TestResourceLimits:
     """Test resource limit configuration"""
 
@@ -272,6 +306,7 @@ class TestResourceLimits:
         assert ("deploy" in sniffer and "resources" in sniffer["deploy"]) or "mem_limit" in sniffer
 
 
+@_needs_root
 class TestBackendDockerfile:
     """Test backend Dockerfile configuration"""
 
@@ -299,6 +334,7 @@ class TestBackendDockerfile:
         assert "EXPOSE" in content
 
 
+@_needs_root
 class TestFrontendDockerfile:
     """Test frontend Dockerfile configuration"""
 
@@ -330,6 +366,7 @@ class TestFrontendDockerfile:
         assert "standalone" in content
 
 
+@_needs_root
 class TestSnifferDockerfile:
     """Test sniffer Dockerfile configuration"""
 
@@ -341,6 +378,7 @@ class TestSnifferDockerfile:
         assert "HEALTHCHECK" in content
 
 
+@_needs_root
 class TestDockerNetworkIsolation:
     """Test Docker network isolation"""
 
@@ -359,6 +397,7 @@ class TestDockerNetworkIsolation:
         assert len(backend_networks) > 0 or len(frontend_networks) > 0
 
 
+@_needs_root
 class TestSecretHandling:
     """Test secret handling in Docker"""
 
@@ -381,6 +420,7 @@ class TestSecretHandling:
         assert "${" in content or "$(" in content
 
 
+@_needs_root
 class TestPortConfiguration:
     """Test port configuration"""
 

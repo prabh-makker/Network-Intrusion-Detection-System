@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 from datetime import datetime, timedelta
 from typing import Optional
@@ -11,8 +11,8 @@ OTP_LENGTH = 6
 
 
 def generate_otp() -> str:
-    """Generate a random 6-digit OTP."""
-    return "".join(random.choices(string.digits, k=OTP_LENGTH))
+    """Generate a cryptographically secure random 6-digit OTP."""
+    return "".join(secrets.choice(string.digits) for _ in range(OTP_LENGTH))
 
 
 def store_otp(username: str, email: str) -> str:

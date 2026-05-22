@@ -18,14 +18,13 @@ import numpy as np
 class TestAuthenticationEndpoints:
     """Test authentication flow"""
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_signup_success(self, client):
         """Test successful user signup"""
         response = client.post(
             "/api/v1/signup",
             json={
                 "username": "newuser",
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": "newuser@test.com",
                 "security_question": "First pet?",
                 "security_answer": "Fluffy"
@@ -34,12 +33,11 @@ class TestAuthenticationEndpoints:
         assert response.status_code == 200
         assert "User created" in response.json().get("msg", "")
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_signup_duplicate_username(self, client):
         """Test duplicate username rejection"""
         payload = {
             "username": "dupuser",
-            "password": "Pass123",
+            "password": "Pass1234",
             "email": "dup1@test.com",
             "security_question": "First pet?",
             "security_answer": "Fluffy"
@@ -65,7 +63,6 @@ class TestAuthenticationEndpoints:
         for response in responses:
             assert response.status_code in [400, 422]
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_login_success(self, client):
         """Test successful login"""
         # Create user first
@@ -73,7 +70,7 @@ class TestAuthenticationEndpoints:
             "/api/v1/signup",
             json={
                 "username": "logintest",
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": "login@test.com",
                 "security_question": "First pet?",
                 "security_answer": "Fluffy"
@@ -83,20 +80,19 @@ class TestAuthenticationEndpoints:
         # Login attempt
         response = client.post(
             "/api/v1/login/access-token",
-            data={"username": "logintest", "password": "Pass123"}
+            data={"username": "logintest", "password": "Pass1234"}
         )
         assert response.status_code == 200
         assert "access_token" in response.json()
         assert response.json()["token_type"] == "bearer"
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_login_wrong_password(self, client):
         """Test login with incorrect password"""
         client.post(
             "/api/v1/signup",
             json={
                 "username": "wrongpwdtest",
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": "wrongpwd@test.com",
                 "security_question": "First pet?",
                 "security_answer": "Fluffy"
@@ -146,7 +142,7 @@ class TestTrafficAnalysisEndpoints:
     def test_pcap_upload_missing_file(self, client):
         """Test PCAP upload with missing file"""
         response = client.post("/api/v1/traffic/upload-pcap")
-        assert response.status_code in [400, 422]
+        assert response.status_code in [400, 401, 422]
 
     def test_traffic_log_endpoint(self, client):
         """Test traffic logging endpoint"""
@@ -268,7 +264,6 @@ class TestRateLimiting:
         # Should return responses (may be 400, 401, or 429)
         assert len(responses) == 21
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_signup_rate_limit(self, client):
         """Test signup endpoint rate limiting"""
         # Make 11 requests (limit is 10/min)
@@ -278,7 +273,7 @@ class TestRateLimiting:
                 "/api/v1/signup",
                 json={
                     "username": f"ratelimituser{i}",
-                    "password": "Pass123",
+                    "password": "Pass1234",
                     "email": f"user{i}@test.com",
                     "security_question": "Q?",
                     "security_answer": "A"
@@ -322,7 +317,6 @@ class TestErrorHandling:
 class TestDataValidation:
     """Test input data validation"""
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_sql_injection_prevention(self, client):
         """Test SQL injection prevention"""
         malicious_input = "'; DROP TABLE users; --"
@@ -331,7 +325,7 @@ class TestDataValidation:
             "/api/v1/signup",
             json={
                 "username": malicious_input,
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": "test@test.com",
                 "security_question": "Q?",
                 "security_answer": "A"
@@ -340,7 +334,6 @@ class TestDataValidation:
         # Should either reject or safely handle
         assert response.status_code in [200, 400, 422]
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_xss_prevention(self, client):
         """Test XSS attack prevention"""
         xss_payload = "<script>alert('xss')</script>"
@@ -349,7 +342,7 @@ class TestDataValidation:
             "/api/v1/signup",
             json={
                 "username": "normaluser",
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": xss_payload,
                 "security_question": "Q?",
                 "security_answer": xss_payload
@@ -358,7 +351,6 @@ class TestDataValidation:
         # Should safely handle
         assert response.status_code in [200, 400, 422]
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_overly_long_input(self, client):
         """Test handling of excessively long input"""
         long_input = "A" * 10000
@@ -367,7 +359,7 @@ class TestDataValidation:
             "/api/v1/signup",
             json={
                 "username": long_input,
-                "password": "Pass123",
+                "password": "Pass1234",
                 "email": "test@test.com",
                 "security_question": "Q?",
                 "security_answer": "A"
@@ -376,7 +368,6 @@ class TestDataValidation:
         # Should reject or truncate
         assert response.status_code in [400, 422]
 
-    @pytest.mark.skip(reason="bcrypt environment issue - not a code bug")
     def test_email_validation(self, client):
         """Test email format validation"""
         invalid_emails = [
@@ -391,7 +382,7 @@ class TestDataValidation:
                 "/api/v1/signup",
                 json={
                     "username": "testuser",
-                    "password": "Pass123",
+                    "password": "Pass1234",
                     "email": email,
                     "security_question": "Q?",
                     "security_answer": "A"

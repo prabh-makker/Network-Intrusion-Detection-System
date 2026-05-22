@@ -1,0 +1,44 @@
+# Version control
+.git/
+.github/
+
+# ML training data and models (heavy, not needed for backend image)
+ml-models/
+data/
+
+# Frontend source (only Dockerfile + config needed for infra tests)
+frontend/node_modules/
+frontend/.next/
+frontend/src/
+frontend/public/
+frontend/package*.json
+frontend/tsconfig.json
+frontend/tailwind.config.ts
+frontend/postcss.config.mjs
+
+# Sniffer source (only Dockerfile needed for infra tests)
+sniffer/*.py
+sniffer/requirements*.txt
+
+# Backend dev artifacts
+backend/venv/
+backend/ENV/
+backend/**/__pycache__
+backend/**/*.pyc
+backend/**/*.pyo
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/**/*.db
+backend/models/
+backend/**/*.pkl
+backend/**/*.joblib
+backend/*.log
+
+# Docs and temp files
+*.md
+*.log
+*.tmp
+*.temp
+tmp/
+.DS_Store

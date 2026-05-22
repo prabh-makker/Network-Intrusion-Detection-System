@@ -47,8 +47,9 @@ def login_access_token(
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+    if not user.is_active:
+        # Use same generic message to prevent username enumeration
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
@@ -71,6 +72,20 @@ def create_user_signup(
     db: Session = Depends(get_db)
 ) -> Any:
     """Create new user with email (required for password recovery)."""
+    import re
+    if not username or not username.strip():
+        raise HTTPException(status_code=400, detail="Username cannot be empty or whitespace.")
+    if len(username.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Username must be at least 2 characters long.")
+    if len(username) > 50:
+        raise HTTPException(status_code=400, detail="Username cannot exceed 50 characters.")
+    if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        raise HTTPException(status_code=400, detail="Username may only contain letters, numbers, underscores, hyphens, and dots.")
+    email_stripped = email.strip() if email else ""
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_stripped):
+        raise HTTPException(status_code=400, detail="Invalid email address format.")
+    if not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
     if not security_answer or not security_answer.strip():
         raise HTTPException(status_code=400, detail="Security answer is required.")
     if not security_question or not security_question.strip():
@@ -114,13 +129,15 @@ def get_user_question(
     username: str = Body(..., embed=True),
     db: Session = Depends(get_db)
 ) -> Any:
-    """Step 1: Return the security question for a given username."""
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="No account found with this username.")
+    """Step 1: Return the security question for a given username.
 
-    if not user.security_question:
-        raise HTTPException(status_code=400, detail="No security question set for this account.")
+    Returns the same generic response whether the user exists or not to prevent
+    username enumeration attacks.
+    """
+    user = db.query(User).filter(User.username == username).first()
+    # Return identical generic error regardless of whether user exists (prevent enumeration)
+    if not user or not user.security_question:
+        raise HTTPException(status_code=400, detail="Account not eligible for security question recovery.")
 
     return {"question": user.security_question}
 
@@ -136,8 +153,9 @@ def reset_with_security_answer(
 ) -> Any:
     """Step 2: Verify security answer and reset password."""
     user = db.query(User).filter(User.username == username).first()
+    # Use generic message to prevent username enumeration
     if not user:
-        raise HTTPException(status_code=404, detail="No account found with this username.")
+        raise HTTPException(status_code=400, detail="Incorrect answer. Please check your username and try again.")
 
     # Rate limiting
     now = time.time()
@@ -150,7 +168,7 @@ def reset_with_security_answer(
         )
 
     if not user.security_answer_hash:
-        raise HTTPException(status_code=400, detail="No security question set for this account.")
+        raise HTTPException(status_code=400, detail="Account not eligible for security question recovery.")
 
     # Verify answer (case-insensitive)
     if not security.verify_password(security_answer.strip().lower(), user.security_answer_hash):
@@ -165,8 +183,8 @@ def reset_with_security_answer(
     # Clear rate limit on success
     _reset_rate.pop(username, None)
 
-    if not new_password or len(new_password) < 4:
-        raise HTTPException(status_code=400, detail="Password must be at least 4 characters.")
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
 
     user.hashed_password = security.get_password_hash(new_password)
     db.commit()

@@ -31,6 +31,17 @@ def setup_database():
     Base.metadata.drop_all(bind=engine)
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Reset in-memory rate limiter state before each test to prevent cross-test 429 interference."""
+    from app.api.v1.endpoints.login import limiter as login_limiter
+    try:
+        login_limiter.reset()
+    except Exception:
+        pass
+    yield
+
+
 @pytest.fixture()
 def client():
     app.dependency_overrides[get_db] = override_get_db

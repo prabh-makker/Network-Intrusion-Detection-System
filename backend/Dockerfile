@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # ============================================================
@@ -32,7 +32,20 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /root/.local /root/.local
 
 # Copy application code
-COPY . .
+COPY backend/ .
+
+# Copy project root files so Docker infrastructure tests can run inside the container
+RUN mkdir -p /nids_root/backend /nids_root/frontend /nids_root/sniffer
+COPY docker-compose.yml /nids_root/docker-compose.yml
+COPY backend/Dockerfile /nids_root/backend/Dockerfile
+COPY frontend/Dockerfile /nids_root/frontend/Dockerfile
+COPY sniffer/Dockerfile /nids_root/sniffer/Dockerfile
+COPY backend/.dockerignore /nids_root/backend/.dockerignore
+COPY frontend/.dockerignore /nids_root/frontend/.dockerignore
+COPY sniffer/.dockerignore /nids_root/sniffer/.dockerignore
+COPY frontend/next.config.ts /nids_root/frontend/next.config.ts
+COPY .env.example /nids_root/.env.example
+COPY .gitignore /nids_root/.gitignore
 
 # Set PATH to use user-installed packages
 ENV PATH=/root/.local/bin:$PATH
@@ -46,4 +59,3 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-

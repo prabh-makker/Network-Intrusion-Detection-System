@@ -6,8 +6,8 @@ services:
   # ========================================================
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: nids-backend
     restart: unless-stopped
     ports:
@@ -17,6 +17,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/nids.db}
       # Security
       - SECRET_KEY=${SECRET_KEY:-dev-key-change-in-production}
+      - SNIFFER_API_KEY=${SNIFFER_API_KEY:-}
       - ENVIRONMENT=${ENVIRONMENT:-production}
       # API configuration
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
@@ -121,6 +122,8 @@ services:
     environment:
       # Backend API endpoint (mock mode uses service name, real mode uses localhost)
       - API_ENDPOINT=${API_ENDPOINT:-http://nids-backend:8001/api/v1/traffic/log}
+      # Shared secret with backend for /traffic/log endpoint auth
+      - SNIFFER_API_KEY=${SNIFFER_API_KEY:-}
       # Shared ML models location
       - MODEL_DIR=/app/shared-models
       # Sniffer mode: 'mock' (Docker-friendly) or 'real' (scapy, Linux host network only)

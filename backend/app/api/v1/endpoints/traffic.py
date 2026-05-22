@@ -1,14 +1,19 @@
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query, status
+from fastapi import APIRouter, Header, HTTPException, WebSocket, WebSocketDisconnect, Query, status
 from pathlib import Path
 import asyncio
 import json
 import logging
+import os
 import random
-from typing import List
+from typing import List, Optional
 from app.core.security import decode_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Internal sniffer API key — set via SNIFFER_API_KEY env var.
+# If not set, the endpoint is unrestricted (acceptable in Docker-isolated dev).
+_SNIFFER_API_KEY: Optional[str] = os.getenv("SNIFFER_API_KEY")
 
 class ConnectionManager:
     def __init__(self):
@@ -74,7 +79,21 @@ def send_discord_alert(packet):
         logger.warning("Discord webhook failed: %s", e)
 
 @router.post("/log")
-async def log_packet(packet: PacketLog, db: Session = Depends(get_db)):
+async def log_packet(
+    packet: PacketLog,
+    db: Session = Depends(get_db),
+    x_sniffer_key: Optional[str] = Header(default=None, alias="X-Sniffer-Key"),
+):
+    """Receive packet data from the sniffer agent.
+
+    Protected by X-Sniffer-Key header when SNIFFER_API_KEY env var is set.
+    In development (no SNIFFER_API_KEY set), the endpoint is unrestricted.
+    """
+    if _SNIFFER_API_KEY and x_sniffer_key != _SNIFFER_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing sniffer API key",
+        )
     if packet.is_threat:
         log_entry = ThreatLog(
             src_ip=packet.src_ip,
@@ -117,10 +136,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=No
 
 import uuid
 import os
-import shutil
 from fastapi import File, UploadFile
 from app.services.pcap_service import pcap_analyzer
 from app.api import deps
+
+MAX_PCAP_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB hard limit
 
 @router.post("/upload-pcap")
 async def upload_pcap(
@@ -134,8 +154,27 @@ async def upload_pcap(
 
     safe_filename = os.path.basename(file.filename or "")
     temp_path = f"temp_{uuid.uuid4()}.pcap"
+
+    # Read with size limit to prevent DoS via massive uploads
     with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        total = 0
+        chunk_size = 1024 * 64  # 64 KB chunks
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_PCAP_SIZE_BYTES:
+                buffer.close()
+                try:
+                    os.remove(temp_path)
+                except FileNotFoundError:
+                    pass
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"PCAP file exceeds maximum allowed size of {MAX_PCAP_SIZE_BYTES // (1024*1024)} MB"
+                )
+            buffer.write(chunk)
 
     try:
         results = pcap_analyzer.analyze(temp_path, db)

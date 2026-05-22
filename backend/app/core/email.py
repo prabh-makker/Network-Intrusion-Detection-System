@@ -16,9 +16,8 @@ def send_otp_email(email: str, otp_code: str, username: str) -> bool:
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
 
-    # If SMTP is not configured, return False
+    # If SMTP is not configured, return False (never print OTP to logs)
     if not smtp_host or not smtp_user or not smtp_password:
-        print(f"⚠️  SMTP not configured. OTP for {username}: {otp_code}")
         return False
 
     try:
@@ -76,11 +75,8 @@ def send_otp_email(email: str, otp_code: str, username: str) -> bool:
         server.sendmail(smtp_from, email, msg.as_string())
         server.quit()
 
-        print(f"✅ OTP email sent to {email}")
         return True
 
-    except Exception as e:
-        print(f"❌ Failed to send OTP email: {str(e)}")
-        # Fallback: print OTP to console
-        print(f"⚠️  OTP for {username} ({email}): {otp_code}")
+    except Exception:
+        # Do NOT log the OTP code — it is a security credential
         return False
