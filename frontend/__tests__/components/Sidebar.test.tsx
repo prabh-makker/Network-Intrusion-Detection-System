@@ -1,108 +1,66 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ReactNode } from 'react'
 import Sidebar from '@/components/Sidebar'
 
-// Mock next/navigation
+// ---------------------------------------------------------------------------
+// Mocks — inline factories, no outer-variable closures
+// ---------------------------------------------------------------------------
+
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    pathname: '/',
-  }),
-  usePathname: () => '/',
+  useRouter: jest.fn(() => ({ push: jest.fn() })),
+  usePathname: jest.fn(() => '/dashboard'),
 }))
 
-// Wrapper component to provide router context
-function RenderWithRouter({ children }: { children: ReactNode }) {
-  return <>{children}</>
-}
+jest.mock('@/context/ThemeContext', () => ({
+  useTheme: jest.fn(() => ({ theme: 'dark', toggleTheme: jest.fn() })),
+}))
+
+jest.mock('@/lib/auth', () => ({
+  removeToken: jest.fn(),
+}))
+
+HTMLCanvasElement.prototype.getContext = jest.fn(() => null)
+
+// ---------------------------------------------------------------------------
 
 describe('Sidebar Component', () => {
   it('renders sidebar container', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-    const sidebar = screen.getByRole('navigation') || screen.getByTestId('sidebar')
-    expect(sidebar).toBeInTheDocument()
+    render(<Sidebar />)
+    // Sidebar renders as <aside> → role complementary
+    expect(screen.getByRole('complementary')).toBeInTheDocument()
   })
 
   it('renders navigation links', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    // Check for main navigation links
+    render(<Sidebar />)
     const links = screen.queryAllByRole('link')
     expect(links.length).toBeGreaterThan(0)
   })
 
   it('displays dashboard link', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    const dashboardLink = screen.queryByText(/dashboard/i) || screen.queryByText(/home/i)
-    expect(dashboardLink).toBeInTheDocument()
+    render(<Sidebar />)
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 
-  it('toggles sidebar on menu button click', () => {
-    const { container } = render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    const menuButton = screen.queryByRole('button', { name: /menu/i }) ||
-                       container.querySelector('button[aria-label*="menu"]')
-
-    if (menuButton) {
-      fireEvent.click(menuButton)
-      // Sidebar state should change (implementation-specific)
-      expect(menuButton).toBeInTheDocument()
+  it('toggles sidebar on collapse button click', () => {
+    const { container } = render(<Sidebar />)
+    const collapseBtn = container.querySelector('.sidebar__collapse-btn')
+    if (collapseBtn) {
+      fireEvent.click(collapseBtn)
+      expect(container.querySelector('.sidebar--collapsed')).toBeInTheDocument()
     }
   })
 
   it('contains alerts navigation', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    const alertsLink = screen.queryByText(/alerts/i)
-    if (alertsLink) {
-      expect(alertsLink).toBeInTheDocument()
-    }
+    render(<Sidebar />)
+    expect(screen.getByText('Threat Alerts')).toBeInTheDocument()
   })
 
   it('contains map navigation', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    const mapLink = screen.queryByText(/map/i)
-    if (mapLink) {
-      expect(mapLink).toBeInTheDocument()
-    }
+    render(<Sidebar />)
+    expect(screen.getByText('Geo-IP Map')).toBeInTheDocument()
   })
 
   it('contains settings navigation', () => {
-    render(
-      <RenderWithRouter>
-        <Sidebar />
-      </RenderWithRouter>
-    )
-
-    const settingsLink = screen.queryByText(/settings/i)
-    if (settingsLink) {
-      expect(settingsLink).toBeInTheDocument()
-    }
+    render(<Sidebar />)
+    expect(screen.getByText('System Config')).toBeInTheDocument()
   })
 })
