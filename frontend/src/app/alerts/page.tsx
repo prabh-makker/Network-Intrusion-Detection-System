@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ShieldAlert,
   ShieldCheck,
@@ -60,6 +60,60 @@ const THREAT_ICONS: Record<string, React.ReactNode> = {
   "DDoS (Ping of Death)": <Skull size={20} />,
   Probe: <Radar size={20} />,
   "U2R (Root Access)": <Lock size={20} />,
+};
+
+// Animated counter — counts up to value over ~800 ms
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value);
+  const prev = useRef(value);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = value;
+    if (from === value) return;
+    let current = from;
+    const step = Math.max(1, Math.ceil(Math.abs(value - from) / 50));
+    const dir = value > from ? 1 : -1;
+    const timer = setInterval(() => {
+      current += step * dir;
+      if ((dir > 0 && current >= value) || (dir < 0 && current <= value)) {
+        setDisplay(value);
+        clearInterval(timer);
+      } else {
+        setDisplay(current);
+      }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <>{display.toLocaleString()}</>;
+}
+
+// Short display names for truncation-prone labels
+const SHORT_LABEL: Record<string, string> = {
+  "DDoS (Ping of Death)": "Ping of Death",
+  "R2L (Unauthorized Access)": "R2L",
+  "U2R (Root Access)": "U2R",
+};
+
+// Per-label accent colors (Tailwind token subsets for dark + light)
+const LABEL_STYLE: Record<string, { border: string; glow: string; text: string; bg: string }> = {
+  DDoS:                      { border: "border-violet-500/40",  glow: "shadow-violet-500/20",  text: "text-violet-400",  bg: "bg-violet-500/10" },
+  "DDoS (Ping of Death)":    { border: "border-pink-500/40",    glow: "shadow-pink-500/20",    text: "text-pink-400",    bg: "bg-pink-500/10" },
+  DoS:                       { border: "border-cyan-500/40",    glow: "shadow-cyan-500/20",    text: "text-cyan-400",    bg: "bg-cyan-500/10" },
+  Probe:                     { border: "border-blue-500/40",    glow: "shadow-blue-500/20",    text: "text-blue-400",    bg: "bg-blue-500/10" },
+  "R2L (Unauthorized Access)": { border: "border-orange-500/40", glow: "shadow-orange-500/20", text: "text-orange-400", bg: "bg-orange-500/10" },
+  "U2R (Root Access)":       { border: "border-rose-500/40",    glow: "shadow-rose-500/20",    text: "text-rose-400",    bg: "bg-rose-500/10" },
+  Benign:                    { border: "border-emerald-500/40", glow: "shadow-emerald-500/20", text: "text-emerald-400", bg: "bg-emerald-500/10" },
+  Malware:                   { border: "border-red-500/40",     glow: "shadow-red-500/20",     text: "text-red-400",     bg: "bg-red-500/10" },
+  "Port Scan":               { border: "border-teal-500/40",    glow: "shadow-teal-500/20",    text: "text-teal-400",    bg: "bg-teal-500/10" },
+  "Brute Force":             { border: "border-amber-500/40",   glow: "shadow-amber-500/20",   text: "text-amber-400",   bg: "bg-amber-500/10" },
+  "SQL Injection":           { border: "border-purple-500/40",  glow: "shadow-purple-500/20",  text: "text-purple-400",  bg: "bg-purple-500/10" },
+};
+const DEFAULT_STYLE = { border: "border-indigo-500/40", glow: "shadow-indigo-500/20", text: "text-indigo-400", bg: "bg-indigo-500/10" };
+
+const LABEL_EMOJI: Record<string, string> = {
+  Benign: "✅", "Brute Force": "🔓", DDoS: "💥", "DDoS (Ping of Death)": "💀",
+  DoS: "⚡", Malware: "🦠", "Port Scan": "🔍", Probe: "📡",
+  "R2L (Unauthorized Access)": "🚪", "SQL Injection": "💉", "U2R (Root Access)": "👑",
 };
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
@@ -202,147 +256,75 @@ export default function AlertsPage() {
       {/* Main Content Container */}
       <div className="flex-1 px-6 py-6 w-full overflow-auto">
         <div className="max-w-7xl mx-auto w-full">
-          {/* Stat Cards - ALWAYS VISIBLE AT TOP (STICKY) */}
-          <div
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 50,
-              marginBottom: "24px",
-              width: "100%",
-              backgroundColor: isDark ? "#000000" : "#000000",
-              paddingBottom: "12px",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                gap: "12px",
-                width: "100%",
-              }}
-            >
-              {/* Total Threats Card */}
-              <div
-                style={{
-                  background: isDark
-                    ? "linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(153, 27, 27, 0.1) 50%, rgba(127, 29, 29, 0.08) 100%)"
-                    : "linear-gradient(135deg, rgba(254, 226, 226, 0.2) 0%, rgba(254, 202, 202, 0.15) 50%, rgba(252, 165, 165, 0.1) 100%)",
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  border: "1.5px solid",
-                  borderColor: isDark ? "rgba(239, 68, 68, 0.4)" : "rgba(248, 113, 113, 0.3)",
-                  borderRadius: "20px",
-                  padding: "20px 16px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  boxShadow: isDark
-                    ? "0 0 30px rgba(220, 38, 38, 0.25), 0 0 60px rgba(220, 38, 38, 0.1), inset 0 1px 15px rgba(255, 255, 255, 0.08)"
-                    : "0 0 30px rgba(248, 113, 113, 0.15), 0 0 60px rgba(248, 113, 113, 0.08), inset 0 1px 15px rgba(255, 255, 255, 0.15)",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.08) translateY(-4px)";
-                  e.currentTarget.style.borderColor = isDark ? "rgba(239, 68, 68, 0.6)" : "rgba(248, 113, 113, 0.5)";
-                  e.currentTarget.style.boxShadow = isDark
-                    ? "0 0 40px rgba(220, 38, 38, 0.4), 0 0 80px rgba(220, 38, 38, 0.2), inset 0 1px 15px rgba(255, 255, 255, 0.12)"
-                    : "0 0 40px rgba(248, 113, 113, 0.25), 0 0 80px rgba(248, 113, 113, 0.12), inset 0 1px 15px rgba(255, 255, 255, 0.25)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1) translateY(0)";
-                  e.currentTarget.style.borderColor = isDark ? "rgba(239, 68, 68, 0.4)" : "rgba(248, 113, 113, 0.3)";
-                  e.currentTarget.style.boxShadow = isDark
-                    ? "0 0 30px rgba(220, 38, 38, 0.25), 0 0 60px rgba(220, 38, 38, 0.1), inset 0 1px 15px rgba(255, 255, 255, 0.08)"
-                    : "0 0 30px rgba(248, 113, 113, 0.15), 0 0 60px rgba(248, 113, 113, 0.08), inset 0 1px 15px rgba(255, 255, 255, 0.15)";
-                }}
-              >
-                <div style={{ position: "absolute", top: "-50%", right: "-50%", width: "200px", height: "200px", background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
-                <div style={{ fontSize: "14px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", color: isDark ? "#fca5a5" : "#dc2626", margin: "0 0 12px 0", opacity: 0.85 }}>
-                  🚨 Total Threats
-                </div>
-                <div style={{ fontSize: "48px", fontWeight: "900", color: isDark ? "#fff" : "#1f2937", margin: "0", textShadow: isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.15)" }}>
-                  {stats.total_threats}
-                </div>
-              </div>
+          {/* Stat Cards — sticky, real-time (refreshes every 5 s) */}
+          <div className={`sticky top-0 z-50 mb-6 pb-3 ${isDark ? "bg-black/80" : "bg-white/80"} backdrop-blur-xl`}>
+            {/* Live indicator */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className={`text-xs font-semibold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+                Live · updates every 5s
+              </span>
+            </div>
 
-              {/* Threat Type Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+              {/* Total Threats */}
+              <motion.div
+                whileHover={{ scale: 1.04, y: -3 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 cursor-default
+                  ${isDark
+                    ? "bg-gradient-to-br from-red-900/20 to-red-800/10 border-red-500/40 shadow-lg shadow-red-500/10"
+                    : "bg-red-50 border-red-300/60 shadow-md shadow-red-200/50"}`}
+              >
+                <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-red-500/10 blur-xl pointer-events-none" />
+                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDark ? "text-red-300" : "text-red-600"}`}>
+                  🚨 Total
+                </p>
+                <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-red-950"}`}>
+                  <AnimatedNumber value={stats.total_threats} />
+                </p>
+                <p className={`text-xs mt-1 ${isDark ? "text-red-400" : "text-red-500"}`}>threats</p>
+              </motion.div>
+
+              {/* Per-label cards */}
               {Object.entries(stats.by_label).map(([label, count]) => {
-                const colors: Record<string, { glassGradient: string; borderColor: string; emoji: string }> = {
-                  Benign: { glassGradient: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.08) 50%, rgba(4, 120, 87, 0.05) 100%)", borderColor: isDark ? "rgba(52, 211, 153, 0.4)" : "rgba(16, 185, 129, 0.3)", emoji: "✅" },
-                  "Brute Force": { glassGradient: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.08) 50%, rgba(180, 83, 9, 0.05) 100%)", borderColor: isDark ? "rgba(251, 191, 36, 0.4)" : "rgba(245, 158, 11, 0.3)", emoji: "🔓" },
-                  DDoS: { glassGradient: "linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.08) 50%, rgba(109, 40, 217, 0.05) 100%)", borderColor: isDark ? "rgba(167, 139, 250, 0.4)" : "rgba(139, 92, 246, 0.3)", emoji: "💥" },
-                  "DDoS (Ping of Death)": { glassGradient: "linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.08) 50%, rgba(190, 24, 93, 0.05) 100%)", borderColor: isDark ? "rgba(244, 114, 182, 0.4)" : "rgba(236, 72, 153, 0.3)", emoji: "💀" },
-                  DoS: { glassGradient: "linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(8, 145, 178, 0.08) 50%, rgba(14, 116, 144, 0.05) 100%)", borderColor: isDark ? "rgba(34, 211, 238, 0.4)" : "rgba(6, 182, 212, 0.3)", emoji: "⚡" },
-                  Malware: { glassGradient: "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.08) 50%, rgba(185, 28, 28, 0.05) 100%)", borderColor: isDark ? "rgba(248, 113, 113, 0.4)" : "rgba(239, 68, 68, 0.3)", emoji: "🦠" },
-                  "Port Scan": { glassGradient: "linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(13, 148, 136, 0.08) 50%, rgba(15, 118, 110, 0.05) 100%)", borderColor: isDark ? "rgba(45, 212, 191, 0.4)" : "rgba(20, 184, 166, 0.3)", emoji: "🔍" },
-                  Probe: { glassGradient: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.08) 50%, rgba(29, 78, 216, 0.05) 100%)", borderColor: isDark ? "rgba(96, 165, 250, 0.4)" : "rgba(59, 130, 246, 0.3)", emoji: "📡" },
-                  "R2L (Unauthorized Access)": { glassGradient: "linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.08) 50%, rgba(194, 65, 12, 0.05) 100%)", borderColor: isDark ? "rgba(251, 146, 60, 0.4)" : "rgba(249, 115, 22, 0.3)", emoji: "🚪" },
-                  "SQL Injection": { glassGradient: "linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(147, 51, 234, 0.08) 50%, rgba(126, 34, 206, 0.05) 100%)", borderColor: isDark ? "rgba(216, 180, 254, 0.4)" : "rgba(168, 85, 247, 0.3)", emoji: "💉" },
-                  "U2R (Root Access)": { glassGradient: "linear-gradient(135deg, rgba(255, 0, 110, 0.1) 0%, rgba(217, 3, 104, 0.08) 50%, rgba(165, 0, 71, 0.05) 100%)", borderColor: isDark ? "rgba(255, 107, 182, 0.4)" : "rgba(255, 0, 110, 0.3)", emoji: "👑" },
-                };
-                const color = colors[label] || { glassGradient: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.08) 50%, rgba(67, 56, 202, 0.05) 100%)", borderColor: isDark ? "rgba(129, 140, 248, 0.4)" : "rgba(99, 102, 241, 0.3)", emoji: "❓" };
+                const s = LABEL_STYLE[label] ?? DEFAULT_STYLE;
+                const emoji = LABEL_EMOJI[label] ?? "❓";
+                const displayName = SHORT_LABEL[label] ?? label;
+                const isActive = selectedLabel === label;
 
                 return (
-                  <button
+                  <motion.button
                     key={label}
+                    whileHover={{ scale: 1.04, y: -3 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     onClick={() => {
-                      setSelectedLabel(selectedLabel === label ? null : label);
+                      setSelectedLabel(isActive ? null : label);
                       fetchExplanation(label);
                     }}
-                    style={{
-                      background: color.glassGradient,
-                      backdropFilter: "blur(20px) saturate(180%)",
-                      border: `1.5px solid ${color.borderColor}`,
-                      borderRadius: "20px",
-                      padding: "18px 14px",
-                      textAlign: "center",
-                      cursor: "pointer",
-                      transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      color: isDark ? "#fff" : "#1f2937",
-                      fontFamily: "inherit",
-                      fontSize: "13px",
-                      boxShadow: selectedLabel === label
-                        ? `0 0 40px ${color.borderColor}50, 0 0 20px ${color.borderColor}30, inset 0 1px 15px rgba(255,255,255,0.15)`
-                        : `0 0 20px ${color.borderColor}30, inset 0 1px 15px rgba(255,255,255,0.1)`,
-                      position: "relative",
-                      overflow: "hidden",
-                      transform: selectedLabel === label ? "scale(1.08) translateY(-4px)" : "scale(1) translateY(0)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "scale(1.08) translateY(-4px)";
-                      e.currentTarget.style.borderColor = color.borderColor.replace("0.4", "0.6");
-                      e.currentTarget.style.boxShadow = `0 0 50px ${color.borderColor}50, 0 0 30px ${color.borderColor}30, inset 0 1px 15px rgba(255,255,255,0.2)`;
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedLabel !== label) {
-                        e.currentTarget.style.transform = "scale(1) translateY(0)";
-                        e.currentTarget.style.borderColor = color.borderColor;
-                        e.currentTarget.style.boxShadow = `0 0 20px ${color.borderColor}30, inset 0 1px 15px rgba(255,255,255,0.1)`;
-                      }
-                    }}
+                    className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 text-left
+                      transition-all duration-200 cursor-pointer
+                      ${s.bg} ${s.border}
+                      ${isActive
+                        ? `ring-2 ring-offset-1 ${isDark ? "ring-offset-black" : "ring-offset-white"} ${s.border.replace("border-", "ring-")}`
+                        : ""}
+                      shadow-lg ${s.glow}`}
                   >
-                    <div style={{ position: "absolute", top: "-50%", right: "-50%", width: "200px", height: "200px", background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
-                    <div style={{ fontSize: "20px", marginBottom: "6px" }}>{color.emoji}</div>
-                    <div style={{ fontSize: "40px", fontWeight: "900", margin: "0 0 8px 0", textShadow: isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.15)" }}>
-                      {count}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        textTransform: "uppercase",
-                        margin: "0",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        letterSpacing: "0.5px",
-                        opacity: 0.9,
-                      }}
-                    >
-                      {label}
-                    </div>
-                  </button>
+                    <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-20 blur-xl pointer-events-none" />
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${s.text}`}>
+                      {emoji} {displayName}
+                    </p>
+                    <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-gray-900"}`}>
+                      <AnimatedNumber value={count} />
+                    </p>
+                    {isActive && (
+                      <p className={`text-xs mt-1 font-semibold ${s.text}`}>● filtering</p>
+                    )}
+                  </motion.button>
                 );
               })}
             </div>
