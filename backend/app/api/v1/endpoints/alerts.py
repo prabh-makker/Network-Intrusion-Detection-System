@@ -102,6 +102,13 @@ async def get_alert_stats(
         .group_by(ThreatLog.label)
         .all()
     )
+    # Active (unblocked) counts per label — drops when SECURE NOW blocks threats
+    by_label_active = (
+        db.query(ThreatLog.label, func.count(ThreatLog.id))
+        .filter(ThreatLog.is_blocked == False)
+        .group_by(ThreatLog.label)
+        .all()
+    )
     # Top sources should only count UNBLOCKED threats (active attackers)
     top_sources = (
         db.query(ThreatLog.src_ip, func.count(ThreatLog.id).label("count"))
@@ -117,6 +124,7 @@ async def get_alert_stats(
         "active_threats": active_count,
         "blocked_threats": blocked_count,
         "by_label": {label: count for label, count in by_label},
+        "by_label_active": {label: count for label, count in by_label_active},
         "top_sources": [{"ip": ip, "count": c} for ip, c in top_sources],
     }
 

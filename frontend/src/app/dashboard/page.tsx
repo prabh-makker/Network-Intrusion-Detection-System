@@ -854,85 +854,46 @@ export default function NIDSDashboard() {
     }
   };
 
-  // SECURE DASHBOARD - One-click security action
+  // SECURE DASHBOARD — blocks ALL active threats via single backend call
   const handleSecureDashboard = async () => {
     if (isSecuring) return;
     setIsSecuring(true);
     setSecuredCount(0);
 
-    toast("info", "Securing Dashboard...", "Fetching all threats and blocking attackers");
+    toast("info", "Securing Dashboard...", "Blocking every active threat in the database");
 
     try {
-      // Fetch all recent alerts (up to 100) to find threats to block
-      const alertsRes = await fetchWithAuth(`${apiUrl}/api/v1/alerts/recent?limit=100`);
-      if (!alertsRes.ok) {
-        toast("error", "Security Action Failed", "Could not fetch threats from server");
-        setIsSecuring(false);
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/block-all-active`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        toast("error", "Security Action Failed", `Server returned ${res.status}`);
         return;
       }
 
-      const allAlerts = await alertsRes.json();
-      console.log(`SECURE NOW: Found ${allAlerts.length} total alerts`);
+      const data = await res.json();
+      const blockedCount = data.blocked_count ?? 0;
+      const uniqueIps = data.unique_ips_blocked ?? 0;
+      const blockedIps: string[] = data.blocked_ips ?? [];
 
-      // Get unblocked threats (not Normal)
-      const unblockedThreats = allAlerts.filter(
-        (a: any) => !a.is_blocked && a.label !== "Normal"
-      );
+      setSecuredCount(blockedCount);
 
-      console.log(`SECURE NOW: ${unblockedThreats.length} unblocked threats found`);
-
-      if (unblockedThreats.length === 0) {
+      if (blockedCount === 0) {
         toast("success", "Already Secure", "No active threats to block. System is fully protected.");
-        setIsSecuring(false);
-        return;
-      }
-
-      // Take top 5 threats and block them
-      const threatsToBlock = unblockedThreats.slice(0, 5);
-      let blockedCount = 0;
-      const blockedIps: string[] = [];
-
-      for (const threat of threatsToBlock) {
-        try {
-          const res = await fetchWithAuth(
-            `${apiUrl}/api/v1/alerts/${threat.id}/block`,
-            { method: "POST" }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            console.log(`Blocked: ${threat.src_ip} -> ${data.status}`);
-            blockedCount++;
-            blockedIps.push(threat.src_ip);
-            setSecuredCount(blockedCount);
-            // Small delay between blocks for visual feedback
-            await new Promise(r => setTimeout(r, 200));
-          } else {
-            console.error(`Block failed for ${threat.src_ip}: ${res.status}`);
-          }
-        } catch (e) {
-          console.error(`Failed to block ${threat.src_ip}:`, e);
-        }
-      }
-
-      // Refresh data after blocking
-      await Promise.all([fetchStats(), fetchAlerts()]);
-
-      if (blockedCount > 0) {
+      } else {
         toast(
           "success",
           `✓ Secured ${blockedCount} Threats`,
-          `Blocked IPs: ${blockedIps.slice(0, 3).join(", ")}${blockedIps.length > 3 ? `, +${blockedIps.length - 3} more` : ""}`
-        );
-      } else {
-        toast(
-          "warning",
-          "Security Action Incomplete",
-          `Could not block any threats. Check console for details.`
+          `Blocked ${uniqueIps} unique IPs${blockedIps.length > 0 ? `: ${blockedIps.slice(0, 3).join(", ")}${blockedIps.length > 3 ? ` +${blockedIps.length - 3} more` : ""}` : ""}`
         );
       }
+
+      // Refresh stats and alerts so cards visibly drop
+      await Promise.all([fetchStats(), fetchAlerts()]);
     } catch (e) {
       console.error("Secure dashboard error:", e);
-      toast("error", "Security Action Failed", `${e instanceof Error ? e.message : "Unknown error"}`);
+      toast("error", "Security Action Failed", e instanceof Error ? e.message : "Unknown error");
     } finally {
       setIsSecuring(false);
       setTimeout(() => setSecuredCount(0), 3000);

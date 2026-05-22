@@ -36,7 +36,10 @@ type Alert = {
 
 type AlertStats = {
   total_threats: number;
+  active_threats?: number;
+  blocked_threats?: number;
   by_label: Record<string, number>;
+  by_label_active?: Record<string, number>;
   top_sources: { ip: string; count: number }[];
 };
 
@@ -270,7 +273,7 @@ export default function AlertsPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-              {/* Total Threats */}
+              {/* Total Active Threats — drops when SECURE NOW fires */}
               <motion.div
                 whileHover={{ scale: 1.04, y: -3 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -281,20 +284,26 @@ export default function AlertsPage() {
               >
                 <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-red-500/10 blur-xl pointer-events-none" />
                 <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDark ? "text-red-300" : "text-red-600"}`}>
-                  🚨 Total
+                  🚨 Active
                 </p>
                 <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-red-950"}`}>
-                  <AnimatedNumber value={stats.total_threats} />
+                  <AnimatedNumber value={stats.active_threats ?? stats.total_threats} />
                 </p>
-                <p className={`text-xs mt-1 ${isDark ? "text-red-400" : "text-red-500"}`}>threats</p>
+                <p className={`text-xs mt-1 ${isDark ? "text-red-400" : "text-red-500"}`}>
+                  {stats.blocked_threats !== undefined
+                    ? `${stats.blocked_threats.toLocaleString()} blocked`
+                    : "threats"}
+                </p>
               </motion.div>
 
-              {/* Per-label cards */}
-              {Object.entries(stats.by_label).map(([label, count]) => {
+              {/* Per-label cards — uses active counts so numbers drop on SECURE NOW */}
+              {Object.entries(stats.by_label_active ?? stats.by_label).map(([label, count]) => {
                 const s = LABEL_STYLE[label] ?? DEFAULT_STYLE;
                 const emoji = LABEL_EMOJI[label] ?? "❓";
                 const displayName = SHORT_LABEL[label] ?? label;
                 const isActive = selectedLabel === label;
+                const totalForLabel = stats.by_label?.[label] ?? count;
+                const blockedForLabel = Math.max(0, totalForLabel - count);
 
                 return (
                   <motion.button
@@ -321,9 +330,13 @@ export default function AlertsPage() {
                     <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-gray-900"}`}>
                       <AnimatedNumber value={count} />
                     </p>
-                    {isActive && (
+                    {isActive ? (
                       <p className={`text-xs mt-1 font-semibold ${s.text}`}>● filtering</p>
-                    )}
+                    ) : blockedForLabel > 0 ? (
+                      <p className={`text-xs mt-1 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+                        ✓ {blockedForLabel.toLocaleString()} secured
+                      </p>
+                    ) : null}
                   </motion.button>
                 );
               })}
