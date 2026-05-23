@@ -19,62 +19,387 @@
   --sidebar-collapsed-width: 72px;
 }
 
+/* ============================================================
+   LIGHT MODE = COLORFUL LIGHT THEME
+   Soft animated gradient background + white sidebar + vivid accents
+   ============================================================ */
 :root.light {
-  --background: #f8fafc;
+  --background: #f0ebff;
   --foreground: #0f172a;
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --glass-border: rgba(15, 23, 42, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(139, 92, 246, 0.22);
   --muted: #475569;
-  --card-bg: rgba(255, 255, 255, 0.9);
-  --card-border: rgba(15, 23, 42, 0.18);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-border: rgba(139, 92, 246, 0.2);
 }
 
-/* LIGHT MODE - Force readable text on all dashboard elements */
-:root.light .text-purple-200,
-:root.light .text-purple-300,
-:root.light .text-purple-400 {
-  color: #4c1d95 !important;
+/* ============================================================
+   GLOBAL ANIMATIONS (both modes)
+   ============================================================ */
+
+/* Login heading rainbow sweep */
+@keyframes nids-heading-sweep {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
 }
 
-:root.light .text-cyan-300,
-:root.light .text-cyan-400 {
-  color: #0e7490 !important;
+/* Background slow morphing gradient */
+@keyframes nids-bg-morph {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-:root.light .text-white {
-  color: #0f172a !important;
+/* Floating color orb A */
+@keyframes nids-orb-a {
+  0%,100% { transform: translate(0,0) scale(1); opacity: 0.7; }
+  33%      { transform: translate(60px,40px) scale(1.08); opacity: 0.9; }
+  66%      { transform: translate(-30px,60px) scale(0.94); opacity: 0.6; }
 }
 
-:root.light .text-gray-300,
-:root.light .text-gray-400 {
-  color: #475569 !important;
+/* Floating color orb B */
+@keyframes nids-orb-b {
+  0%,100% { transform: translate(0,0) scale(1); opacity: 0.6; }
+  33%      { transform: translate(-50px,-35px) scale(1.1); opacity: 0.8; }
+  66%      { transform: translate(35px,-50px) scale(0.92); opacity: 0.5; }
 }
 
-/* Light mode card backgrounds */
-:root.light .bg-black\/40,
-:root.light .bg-black\/30,
-:root.light .bg-black\/50 {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(20px);
+/* Card border glow pulse */
+@keyframes nids-glow-pulse {
+  0%,100% {
+    box-shadow: 0 0 15px rgba(139,92,246,0.1), 0 4px 20px rgba(0,0,0,0.2);
+    border-color: rgba(139,92,246,0.15);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139,92,246,0.22), 0 0 60px rgba(59,130,246,0.08), 0 4px 24px rgba(0,0,0,0.25);
+    border-color: rgba(139,92,246,0.32);
+  }
 }
 
-/* Light mode borders */
-:root.light .border-purple-500\/30,
-:root.light .border-purple-500\/20,
-:root.light .border-purple-500\/10 {
-  border-color: rgba(124, 58, 237, 0.3) !important;
+/* Shimmer sweep */
+@keyframes nids-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
 }
 
-* {
-  box-sizing: border-box;
+/* Rotating gradient border */
+@keyframes nids-border-spin {
+  0%   { --border-angle: 0turn; }
+  100% { --border-angle: 1turn; }
 }
 
+/* Stat number beat */
+@keyframes nids-stat-beat {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+
+/* ============================================================
+   LIGHT MODE — ANIMATED BODY (soft light gradient — LIGHT theme)
+   ============================================================ */
+:root.light body {
+  background: linear-gradient(-45deg, #f3e8ff, #dbeafe, #ede9fe, #e0f2fe) !important;
+  background-size: 400% 400% !important;
+  animation: nids-bg-morph 18s ease infinite;
+}
+
+/* Soft purple orb — top-left */
+:root.light body::before {
+  content: '';
+  position: fixed;
+  top: -100px;
+  left: 8%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 68%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: nids-orb-a 22s ease-in-out infinite;
+}
+
+/* Soft blue orb — bottom-right */
+:root.light body::after {
+  content: '';
+  position: fixed;
+  bottom: -80px;
+  right: 4%;
+  width: 580px;
+  height: 580px;
+  background: radial-gradient(circle, rgba(59,130,246,0.09) 0%, transparent 68%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: nids-orb-b 28s ease-in-out infinite;
+}
+
+/* ============================================================
+   DARK MODE — SUBTLE ANIMATED BODY
+   ============================================================ */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   margin: 0;
+}
+
+/* Dark mode subtle orbs */
+body::before {
+  content: '';
+  position: fixed;
+  top: -150px;
+  left: 25%;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: nids-orb-a 28s ease-in-out infinite;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -120px;
+  right: 10%;
+  width: 640px;
+  height: 640px;
+  background: radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: nids-orb-b 35s ease-in-out infinite;
+}
+
+/* ============================================================
+   LIGHT MODE — SIDEBAR (white, clean, subtle purple accent)
+   ============================================================ */
+:root.light .sidebar {
+  background: #ffffff;
+  border-right: 1px solid rgba(139,92,246,0.15);
+  box-shadow: 2px 0 20px rgba(139,92,246,0.08);
+}
+
+:root.light .sidebar__link:hover {
+  background: rgba(139,92,246,0.08);
+  color: #6d28d9;
+}
+
+:root.light .sidebar__link--active {
+  background: rgba(139,92,246,0.1);
+  color: #7c3aed;
+}
+
+:root.light .sidebar__action-btn:hover {
+  background: rgba(139,92,246,0.07);
+}
+
+:root.light .sidebar__collapse-btn:hover {
+  background: rgba(139,92,246,0.06);
+}
+
+/* ============================================================
+   LIGHT MODE — GLASS PANELS & STAT CARDS (white + colorful border glow)
+   ============================================================ */
+:root.light .glass-panel {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(139,92,246,0.2);
+  box-shadow: 0 2px 12px rgba(139,92,246,0.1), 0 4px 20px rgba(0,0,0,0.05);
+  animation: nids-glow-pulse 7s ease-in-out infinite;
+}
+
+:root.light .glass-panel:hover {
+  background: #ffffff;
+  border-color: rgba(139,92,246,0.35);
+  box-shadow: 0 4px 24px rgba(139,92,246,0.2), 0 8px 30px rgba(0,0,0,0.07);
+  transition: all 0.3s ease;
+}
+
+:root.light .stat-card {
+  background: #ffffff;
+  border: 1px solid rgba(139,92,246,0.18);
+  box-shadow: 0 2px 10px rgba(139,92,246,0.08), 0 4px 16px rgba(0,0,0,0.04);
+  animation: nids-glow-pulse 5s ease-in-out infinite;
+}
+
+:root.light .stat-card:hover {
+  border-color: rgba(139,92,246,0.32);
+  box-shadow: 0 4px 20px rgba(139,92,246,0.16), 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* ============================================================
+   LIGHT MODE — COLORFUL CARD TINT OVERRIDES
+   ============================================================ */
+
+/* Purple/blue tints → vibrant glass */
+:root.light .bg-purple-950\/10,
+:root.light .bg-purple-900\/10,
+:root.light .bg-purple-900\/20,
+:root.light .bg-purple-900\/5,
+:root.light .bg-purple-900\/40,
+:root.light .bg-purple-800\/10,
+:root.light .bg-purple-800\/20,
+:root.light .bg-purple-800\/30,
+:root.light .bg-blue-900\/10,
+:root.light .bg-blue-900\/20,
+:root.light .bg-blue-900\/5,
+:root.light .bg-indigo-900\/10,
+:root.light .bg-indigo-900\/20,
+:root.light .bg-cyan-900\/10,
+:root.light .bg-cyan-900\/20 {
+  background-color: rgba(139,92,246,0.08) !important;
+}
+
+/* Red tints → crimson glass */
+:root.light .bg-red-900\/20,
+:root.light .bg-red-900\/10,
+:root.light .bg-red-800\/10,
+:root.light .bg-red-800\/20,
+:root.light .bg-red-900\/40,
+:root.light .bg-orange-900\/20,
+:root.light .bg-orange-900\/10,
+:root.light .bg-yellow-900\/20 {
+  background-color: rgba(239,68,68,0.08) !important;
+}
+
+/* Green tints → emerald glass */
+:root.light .bg-emerald-900\/10,
+:root.light .bg-emerald-900\/20,
+:root.light .bg-teal-900\/10,
+:root.light .bg-green-900\/10,
+:root.light .bg-green-900\/20 {
+  background-color: rgba(16,185,129,0.08) !important;
+}
+
+/* Dark gradient cards → white with subtle shadow on light bg */
+:root.light [class*="from-purple-900"],
+:root.light [class*="from-blue-900"],
+:root.light [class*="from-cyan-900"],
+:root.light [class*="from-red-900"],
+:root.light [class*="from-indigo-900"],
+:root.light [class*="from-violet-900"],
+:root.light [class*="from-pink-900"],
+:root.light [class*="from-orange-900"],
+:root.light [class*="from-emerald-900"],
+:root.light [class*="from-teal-900"],
+:root.light [class*="from-amber-900"] {
+  background: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(139,92,246,0.1), 0 4px 16px rgba(0,0,0,0.05) !important;
+}
+
+/* Black transparent cards → white glassy */
+:root.light .bg-black\/40,
+:root.light .bg-black\/30,
+:root.light .bg-black\/50,
+:root.light .bg-black\/60,
+:root.light .bg-black\/70 {
+  background-color: rgba(255,255,255,0.88) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* Light pastel bg overrides → colored glass */
+:root.light .bg-purple-50  { background-color: rgba(139,92,246,0.1) !important; }
+:root.light .bg-purple-100 { background-color: rgba(139,92,246,0.14) !important; }
+:root.light .bg-red-50     { background-color: rgba(239,68,68,0.08) !important; }
+:root.light .bg-red-100    { background-color: rgba(239,68,68,0.12) !important; }
+:root.light .bg-cyan-50    { background-color: rgba(6,182,212,0.08) !important; }
+:root.light .bg-cyan-100   { background-color: rgba(6,182,212,0.12) !important; }
+:root.light .bg-blue-50    { background-color: rgba(59,130,246,0.08) !important; }
+:root.light .bg-emerald-50 { background-color: rgba(16,185,129,0.08) !important; }
+:root.light .bg-orange-50  { background-color: rgba(249,115,22,0.08) !important; }
+:root.light .bg-violet-50  { background-color: rgba(139,92,246,0.1) !important; }
+:root.light .bg-teal-50    { background-color: rgba(20,184,166,0.08) !important; }
+:root.light .bg-amber-50   { background-color: rgba(245,158,11,0.08) !important; }
+:root.light .bg-indigo-50  { background-color: rgba(99,102,241,0.08) !important; }
+
+/* ============================================================
+   LIGHT MODE — GRADIENT TEXT & HEADER
+   ============================================================ */
+:root.light .bg-clip-text.text-transparent {
+  background-image: linear-gradient(135deg, #7c3aed, #2563eb, #0891b2) !important;
+}
+
+/* Sticky header — white glassmorphism */
+:root.light .bg-\[#0d0d1f\]\/95 {
+  background-color: rgba(248,245,255,0.96) !important;
+  border-bottom: 1px solid rgba(139,92,246,0.15) !important;
+  backdrop-filter: blur(24px) !important;
+}
+
+/* Placeholder */
+:root.light input::placeholder { color: #94a3b8 !important; }
+
+/* TEXT COLORS — dark for readability on light background */
+:root.light .text-white      { color: #0f172a !important; }
+:root.light .text-gray-100   { color: #0f172a !important; }
+:root.light .text-gray-200   { color: #1e293b !important; }
+:root.light .text-gray-300   { color: #334155 !important; }
+:root.light .text-gray-400   { color: #475569 !important; }
+:root.light .text-slate-200  { color: #1e293b !important; }
+:root.light .text-slate-300  { color: #334155 !important; }
+:root.light .text-slate-400  { color: #475569 !important; }
+:root.light .text-purple-300 { color: #6d28d9 !important; }
+:root.light .text-purple-400 { color: #7c3aed !important; }
+:root.light .text-blue-300   { color: #1d4ed8 !important; }
+:root.light .text-blue-400   { color: #2563eb !important; }
+:root.light .text-cyan-300   { color: #0284c7 !important; }
+:root.light .text-cyan-400   { color: #0891b2 !important; }
+:root.light .text-emerald-300{ color: #047857 !important; }
+:root.light .text-emerald-400{ color: #059669 !important; }
+:root.light .text-red-300    { color: #b91c1c !important; }
+:root.light .text-red-400    { color: #dc2626 !important; }
+:root.light .text-orange-300 { color: #c2410c !important; }
+:root.light .text-orange-400 { color: #ea580c !important; }
+:root.light .text-yellow-300 { color: #a16207 !important; }
+:root.light .text-yellow-400 { color: #ca8a04 !important; }
+
+/* Borders */
+:root.light .border-slate-200 {
+  border-color: rgba(139,92,246,0.18) !important;
+}
+:root.light .border-purple-500\/30,
+:root.light .border-purple-500\/20,
+:root.light .border-purple-500\/10,
+:root.light .border-purple-500\/40,
+:root.light .border-purple-400\/20 {
+  border-color: rgba(139,92,246,0.28) !important;
+}
+
+/* ============================================================
+   LOGIN PAGE EXCEPTION — always dark, preserve original design
+   ============================================================ */
+:root.light .login-page { color-scheme: dark; }
+:root.light .login-page .text-white  { color: rgba(255,255,255,0.9) !important; }
+:root.light .login-page .text-slate-200 { color: rgba(255,255,255,0.55) !important; }
+:root.light .login-page .text-slate-300 { color: rgba(255,255,255,0.4) !important; }
+:root.light .login-page .text-slate-400 { color: rgba(255,255,255,0.3) !important; }
+:root.light .login-page .text-slate-500 { color: rgba(255,255,255,0.22) !important; }
+:root.light .login-page .text-slate-600 { color: rgba(255,255,255,0.18) !important; }
+:root.light .login-page .text-purple-400 { color: #a78bfa !important; }
+:root.light .login-page .text-purple-500 { color: #8b5cf6 !important; }
+:root.light .login-page .text-purple-600 { color: #7c3aed !important; }
+:root.light .login-page .text-blue-400   { color: #60a5fa !important; }
+:root.light .login-page .bg-clip-text.text-transparent {
+  background-image: linear-gradient(to right, #782850, #a855f7, #60a5fa) !important;
+}
+:root.light .login-page [class*="from-purple-900"],
+:root.light .login-page [class*="from-blue-900"],
+:root.light .login-page [class*="from-red-900"],
+:root.light .login-page [class*="from-indigo-900"] {
+  background: unset !important;
+  box-shadow: unset !important;
+}
+:root.light .login-page .bg-purple-50,
+:root.light .login-page .bg-red-50,
+:root.light .login-page .bg-blue-50 {
+  background-color: unset !important;
+  box-shadow: unset !important;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* ============================================
@@ -112,37 +437,6 @@ body {
   padding: 20px 12px;
   z-index: 50;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-:root.light .sidebar {
-  background: rgba(88, 28, 135, 0.08);
-  border-right: none;
-}
-:root.light .sidebar__link:hover {
-  background: rgba(88, 28, 135, 0.08);
-}
-:root.light .sidebar__link--active {
-  background: rgba(88, 28, 135, 0.12);
-}
-:root.light .sidebar__action-btn:hover {
-  background: rgba(88, 28, 135, 0.08);
-}
-:root.light .sidebar__collapse-btn:hover {
-  background: rgba(88, 28, 135, 0.08);
-}
-:root.light .glass-panel {
-  background: rgba(88, 28, 135, 0.06);
-  border-color: rgba(88, 28, 135, 0.12);
-}
-:root.light .glass-panel:hover {
-  border-color: rgba(88, 28, 135, 0.2);
-}
-:root.light .stat-card {
-  background: rgba(88, 28, 135, 0.06);
-  border-color: rgba(88, 28, 135, 0.12);
-}
-:root.light .stat-card:hover {
-  border-color: rgba(88, 28, 135, 0.2);
 }
 
 .sidebar--collapsed {
@@ -953,6 +1247,20 @@ body:has(.login-page) .sidebar {
 /* ============================================
    LIGHT MODE — DASHBOARD OVERRIDES
    ============================================ */
+:root.light .dash-stat {
+  background: #ffffff;
+  border-color: rgba(100, 116, 139, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+:root.light .dash-stat:hover {
+  border-color: rgba(100, 116, 139, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+:root.light .dash-card {
+  background: #ffffff;
+  border-color: rgba(100, 116, 139, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
 :root.light .dash-card__loader {
   background: rgba(237, 233, 254, 0.75);
 }

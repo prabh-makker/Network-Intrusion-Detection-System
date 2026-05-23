@@ -53,16 +53,20 @@ type Explanation = {
 
 const THREAT_COLORS: Record<string, string> = {
   DoS: "#06b6d4",
+  DDoS: "#a855f7",
   "DDoS (Ping of Death)": "#ec4899",
   Probe: "#f59e0b",
   "U2R (Root Access)": "#ef4444",
+  "R2L (Unauthorized Access)": "#f97316",
 };
 
 const THREAT_ICONS: Record<string, React.ReactNode> = {
   DoS: <Zap size={20} />,
+  DDoS: <Skull size={20} />,
   "DDoS (Ping of Death)": <Skull size={20} />,
   Probe: <Radar size={20} />,
   "U2R (Root Access)": <Lock size={20} />,
+  "R2L (Unauthorized Access)": <Lock size={20} />,
 };
 
 // Animated counter — counts up to value over ~800 ms
@@ -97,21 +101,21 @@ const SHORT_LABEL: Record<string, string> = {
   "U2R (Root Access)": "U2R",
 };
 
-// Per-label accent colors (Tailwind token subsets for dark + light)
-const LABEL_STYLE: Record<string, { border: string; glow: string; text: string; bg: string }> = {
-  DDoS:                      { border: "border-violet-500/40",  glow: "shadow-violet-500/20",  text: "text-violet-400",  bg: "bg-violet-500/10" },
-  "DDoS (Ping of Death)":    { border: "border-pink-500/40",    glow: "shadow-pink-500/20",    text: "text-pink-400",    bg: "bg-pink-500/10" },
-  DoS:                       { border: "border-cyan-500/40",    glow: "shadow-cyan-500/20",    text: "text-cyan-400",    bg: "bg-cyan-500/10" },
-  Probe:                     { border: "border-blue-500/40",    glow: "shadow-blue-500/20",    text: "text-blue-400",    bg: "bg-blue-500/10" },
-  "R2L (Unauthorized Access)": { border: "border-orange-500/40", glow: "shadow-orange-500/20", text: "text-orange-400", bg: "bg-orange-500/10" },
-  "U2R (Root Access)":       { border: "border-rose-500/40",    glow: "shadow-rose-500/20",    text: "text-rose-400",    bg: "bg-rose-500/10" },
-  Benign:                    { border: "border-emerald-500/40", glow: "shadow-emerald-500/20", text: "text-emerald-400", bg: "bg-emerald-500/10" },
-  Malware:                   { border: "border-red-500/40",     glow: "shadow-red-500/20",     text: "text-red-400",     bg: "bg-red-500/10" },
-  "Port Scan":               { border: "border-teal-500/40",    glow: "shadow-teal-500/20",    text: "text-teal-400",    bg: "bg-teal-500/10" },
-  "Brute Force":             { border: "border-amber-500/40",   glow: "shadow-amber-500/20",   text: "text-amber-400",   bg: "bg-amber-500/10" },
-  "SQL Injection":           { border: "border-purple-500/40",  glow: "shadow-purple-500/20",  text: "text-purple-400",  bg: "bg-purple-500/10" },
+// Per-label accent colors — dark: rich gradient; light: soft tinted card
+const LABEL_STYLE: Record<string, { border: string; glow: string; text: string; bg: string; darkBg: string }> = {
+  DDoS:                        { border: "border-violet-500/50",  glow: "shadow-violet-500/25",  text: "text-violet-400",  bg: "bg-violet-50",      darkBg: "bg-gradient-to-br from-violet-900/50 to-violet-800/30" },
+  "DDoS (Ping of Death)":      { border: "border-pink-500/50",    glow: "shadow-pink-500/25",    text: "text-pink-400",    bg: "bg-pink-50",        darkBg: "bg-gradient-to-br from-pink-900/50 to-pink-800/30" },
+  DoS:                         { border: "border-cyan-500/50",    glow: "shadow-cyan-500/25",    text: "text-cyan-400",    bg: "bg-cyan-50",        darkBg: "bg-gradient-to-br from-cyan-900/50 to-cyan-800/30" },
+  Probe:                       { border: "border-blue-500/50",    glow: "shadow-blue-500/25",    text: "text-blue-400",    bg: "bg-blue-50",        darkBg: "bg-gradient-to-br from-blue-900/50 to-blue-800/30" },
+  "R2L (Unauthorized Access)": { border: "border-orange-500/50", glow: "shadow-orange-500/25",  text: "text-orange-400",  bg: "bg-orange-50",      darkBg: "bg-gradient-to-br from-orange-900/50 to-orange-800/30" },
+  "U2R (Root Access)":         { border: "border-rose-500/50",    glow: "shadow-rose-500/25",    text: "text-rose-400",    bg: "bg-rose-50",        darkBg: "bg-gradient-to-br from-rose-900/50 to-rose-800/30" },
+  Benign:                      { border: "border-emerald-500/50", glow: "shadow-emerald-500/25", text: "text-emerald-400", bg: "bg-emerald-50",     darkBg: "bg-gradient-to-br from-emerald-900/50 to-emerald-800/30" },
+  Malware:                     { border: "border-red-500/50",     glow: "shadow-red-500/25",     text: "text-red-400",     bg: "bg-red-50",         darkBg: "bg-gradient-to-br from-red-900/50 to-red-800/30" },
+  "Port Scan":                 { border: "border-teal-500/50",    glow: "shadow-teal-500/25",    text: "text-teal-400",    bg: "bg-teal-50",        darkBg: "bg-gradient-to-br from-teal-900/50 to-teal-800/30" },
+  "Brute Force":               { border: "border-amber-500/50",   glow: "shadow-amber-500/25",   text: "text-amber-400",   bg: "bg-amber-50",       darkBg: "bg-gradient-to-br from-amber-900/50 to-amber-800/30" },
+  "SQL Injection":             { border: "border-purple-500/50",  glow: "shadow-purple-500/25",  text: "text-purple-400",  bg: "bg-purple-50",      darkBg: "bg-gradient-to-br from-purple-900/50 to-purple-800/30" },
 };
-const DEFAULT_STYLE = { border: "border-indigo-500/40", glow: "shadow-indigo-500/20", text: "text-indigo-400", bg: "bg-indigo-500/10" };
+const DEFAULT_STYLE = { border: "border-indigo-500/50", glow: "shadow-indigo-500/25", text: "text-indigo-400", bg: "bg-indigo-50", darkBg: "bg-gradient-to-br from-indigo-900/50 to-indigo-800/30" };
 
 const LABEL_EMOJI: Record<string, string> = {
   Benign: "✅", "Brute Force": "🔓", DDoS: "💥", "DDoS (Ping of Death)": "💀",
@@ -133,6 +137,7 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [stats, setStats] = useState<AlertStats>({ total_threats: 0, by_label: {}, top_sources: [] });
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active">("all");
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -223,15 +228,16 @@ export default function AlertsPage() {
     }
   };
 
-  const filteredAlerts = alerts.filter(
-    (a) =>
+  const filteredAlerts = alerts
+    .filter((a) => statusFilter === "active" ? !a.is_blocked : true)
+    .filter((a) =>
       a.src_ip.includes(searchTerm) ||
       a.dst_ip.includes(searchTerm) ||
       a.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-black">
+    <div className={`min-h-screen w-full flex flex-col ${isDark ? "bg-[#0d0d1f]" : "bg-transparent"}`}>
       {/* Header */}
       <div className={`border-b backdrop-blur-xl px-6 py-6 ${isDark ? "border-purple-500/20 bg-gradient-to-r from-purple-900/10 via-transparent to-blue-900/10" : "border-purple-400/20 bg-purple-950/5"}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-start">
@@ -260,7 +266,7 @@ export default function AlertsPage() {
       <div className="flex-1 px-6 py-6 w-full overflow-auto">
         <div className="max-w-7xl mx-auto w-full">
           {/* Stat Cards — sticky, real-time (refreshes every 5 s) */}
-          <div className={`sticky top-0 z-50 mb-6 pb-3 ${isDark ? "bg-black/80" : "bg-white/80"} backdrop-blur-xl`}>
+          <div className={`sticky top-0 z-50 mb-6 pb-3 ${isDark ? "bg-[#0d0d1f]/95" : "bg-white/95"} backdrop-blur-xl`}>
             {/* Live indicator */}
             <div className="flex items-center gap-2 mb-3">
               <span className="relative flex h-2 w-2">
@@ -273,14 +279,47 @@ export default function AlertsPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-              {/* Total Active Threats — drops when SECURE NOW fires */}
-              <motion.div
+              {/* Total All-Time Threats — click to show all */}
+              <motion.button
                 whileHover={{ scale: 1.04, y: -3 }}
+                whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 cursor-default
-                  ${isDark
-                    ? "bg-gradient-to-br from-red-900/20 to-red-800/10 border-red-500/40 shadow-lg shadow-red-500/10"
-                    : "bg-red-50 border-red-300/60 shadow-md shadow-red-200/50"}`}
+                onClick={() => { setStatusFilter("all"); setSelectedLabel(null); }}
+                className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 text-left
+                  ${statusFilter === "all" && !selectedLabel
+                    ? isDark
+                      ? "bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-400/60 shadow-lg shadow-purple-500/20 ring-2 ring-purple-500/30"
+                      : "bg-purple-100 border-purple-400/70 shadow-md ring-2 ring-purple-400/40"
+                    : isDark
+                      ? "bg-gradient-to-br from-purple-900/20 to-purple-800/10 border-purple-500/40 shadow-lg shadow-purple-500/10"
+                      : "bg-purple-50 border-purple-300/60 shadow-md shadow-purple-200/50"}`}
+              >
+                <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-purple-500/10 blur-xl pointer-events-none" />
+                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDark ? "text-purple-300" : "text-purple-700"}`}>
+                  📊 Total
+                </p>
+                <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-purple-950"}`}>
+                  <AnimatedNumber value={stats.total_threats} />
+                </p>
+                <p className={`text-xs mt-1 ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+                  {statusFilter === "all" && !selectedLabel ? "● showing all" : "click to show all"}
+                </p>
+              </motion.button>
+
+              {/* Active Threats — click to filter active only */}
+              <motion.button
+                whileHover={{ scale: 1.04, y: -3 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                onClick={() => { setStatusFilter("active"); setSelectedLabel(null); }}
+                className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 text-left
+                  ${statusFilter === "active"
+                    ? isDark
+                      ? "bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-400/60 shadow-lg shadow-red-500/20 ring-2 ring-red-500/30"
+                      : "bg-red-100 border-red-400/70 shadow-md ring-2 ring-red-400/40"
+                    : isDark
+                      ? "bg-gradient-to-br from-red-900/20 to-red-800/10 border-red-500/40 shadow-lg shadow-red-500/10"
+                      : "bg-red-50 border-red-300/60 shadow-md shadow-red-200/50"}`}
               >
                 <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-red-500/10 blur-xl pointer-events-none" />
                 <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDark ? "text-red-300" : "text-red-600"}`}>
@@ -290,11 +329,11 @@ export default function AlertsPage() {
                   <AnimatedNumber value={stats.active_threats ?? stats.total_threats} />
                 </p>
                 <p className={`text-xs mt-1 ${isDark ? "text-red-400" : "text-red-500"}`}>
-                  {stats.blocked_threats !== undefined
+                  {statusFilter === "active" ? "● filtering active" : stats.blocked_threats !== undefined
                     ? `${stats.blocked_threats.toLocaleString()} blocked`
-                    : "threats"}
+                    : "click to filter"}
                 </p>
-              </motion.div>
+              </motion.button>
 
               {/* Per-label cards — uses active counts so numbers drop on SECURE NOW */}
               {Object.entries(stats.by_label_active ?? stats.by_label).map(([label, count]) => {
@@ -313,13 +352,14 @@ export default function AlertsPage() {
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     onClick={() => {
                       setSelectedLabel(isActive ? null : label);
+                      setStatusFilter("all");
                       fetchExplanation(label);
                     }}
-                    className={`relative overflow-hidden rounded-2xl border backdrop-blur-xl p-4 text-left
+                    className={`relative overflow-hidden rounded-2xl border p-4 text-left
                       transition-all duration-200 cursor-pointer
-                      ${s.bg} ${s.border}
+                      ${isDark ? s.darkBg : s.bg} ${s.border}
                       ${isActive
-                        ? `ring-2 ring-offset-1 ${isDark ? "ring-offset-black" : "ring-offset-white"} ${s.border.replace("border-", "ring-")}`
+                        ? `ring-2 ring-offset-1 ${isDark ? "ring-offset-[#0d0d1f]" : "ring-offset-white"} ${s.border.replace("border-", "ring-")}`
                         : ""}
                       shadow-lg ${s.glow}`}
                   >
@@ -351,7 +391,7 @@ export default function AlertsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`relative rounded-xl border backdrop-blur-xl ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-400/20 bg-purple-950/10"}`}
+                className={`relative rounded-xl border backdrop-blur-xl ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-300 bg-white shadow-sm"}`}
               >
                 <div className="flex items-center gap-3 px-4 py-3">
                   <Search size={18} className="text-purple-400" />
@@ -393,9 +433,10 @@ export default function AlertsPage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.02 }}
-                        className={`rounded-xl border backdrop-blur-xl p-4 transition-all group ${isDark ? "border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-blue-900/10 hover:border-purple-500/50" : "border-slate-200 bg-white/70 hover:border-purple-300"} ${
+                        className={`rounded-xl border backdrop-blur-xl p-4 transition-all group ${isDark ? "border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-blue-900/10 hover:border-purple-500/50" : "border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-purple-200"} ${
                           alert.is_blocked ? "opacity-50" : ""
                         }`}
+                        style={isDark ? {} : { borderLeft: `3px solid ${THREAT_COLORS[alert.label] || "#8b5cf6"}` }}
                       >
                         <div className="flex items-start gap-4">
                           {/* Icon */}
@@ -413,11 +454,11 @@ export default function AlertsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <span className={`font-bold ${isDark ? "text-white" : "text-purple-950"}`}>{alert.label}</span>
-                              <span className="text-xs bg-purple-500/30 text-purple-200 px-2 py-1 rounded-full">
+                              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${isDark ? "bg-purple-500/30 text-purple-200" : "bg-purple-100 text-purple-700"}`}>
                                 {alert.confidence}%
                               </span>
                               {alert.is_blocked && (
-                                <span className="text-xs bg-emerald-500/30 text-emerald-300 px-2 py-1 rounded-full flex items-center gap-1">
+                                <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 font-semibold ${isDark ? "bg-emerald-500/30 text-emerald-300" : "bg-emerald-100 text-emerald-700"}`}>
                                   <Ban size={12} /> BLOCKED
                                 </span>
                               )}
@@ -468,7 +509,7 @@ export default function AlertsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl border backdrop-blur-xl p-6 h-fit sticky top-6 ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-400/20 bg-purple-950/10"}`}
+              className={`rounded-2xl border backdrop-blur-xl p-6 h-fit sticky top-6 ${isDark ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border-purple-200 bg-white shadow-md"}`}
             >
               <h3 className={`text-lg font-bold flex items-center gap-2 mb-4 ${isDark ? "text-white" : "text-purple-950"}`}>
                 <FileText size={20} className="text-cyan-400" />
@@ -498,9 +539,9 @@ export default function AlertsPage() {
                   <div className="space-y-2">
                     <h5 className={`text-sm font-semibold ${isDark ? "text-purple-200" : "text-purple-900"}`}>Key Indicators</h5>
                     {explanation?.key_indicators?.map((ind, i) => (
-                      <div key={i} className={`rounded-lg p-2 border ${isDark ? "bg-purple-900/40 border-purple-500/20" : "bg-purple-900/10 border-purple-400/20"}`}>
+                      <div key={i} className={`rounded-lg p-2 border ${isDark ? "bg-purple-900/40 border-purple-500/20" : "bg-purple-50 border-purple-200"}`}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-mono text-cyan-300">{ind.feature}</span>
+                          <span className={`text-xs font-mono ${isDark ? "text-cyan-300" : "text-cyan-700"}`}>{ind.feature}</span>
                           <span
                             className="text-xs font-bold px-1.5 py-0.5 rounded"
                             style={{

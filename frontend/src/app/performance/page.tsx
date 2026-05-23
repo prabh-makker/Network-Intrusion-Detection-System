@@ -89,11 +89,13 @@ const InsightCard = ({
 }) => {
   let message = insight.messages.good;
   if (insight.isInverse) {
-    message = insight.metric < insight.critical
-      ? insight.messages.critical
-      : insight.metric < insight.warning
-        ? insight.messages.warning
-        : insight.messages.good;
+    message = insight.metric === 0
+      ? insight.messages.good
+      : insight.metric < insight.critical
+        ? insight.messages.critical
+        : insight.metric < insight.warning
+          ? insight.messages.warning
+          : insight.messages.good;
   } else {
     message = insight.metric > insight.critical
       ? insight.messages.critical
@@ -163,6 +165,7 @@ export default function PerformancePage() {
     isInverse = false
   ): "good" | "warning" | "critical" => {
     if (isInverse) {
+      if (value === 0) return "good"; // No data yet — not a real alert
       return value < criticalThreshold ? "critical" : value < warningThreshold ? "warning" : "good";
     }
     return value > criticalThreshold ? "critical" : value > warningThreshold ? "warning" : "good";

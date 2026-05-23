@@ -340,7 +340,17 @@ export default function LoginPage() {
         method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString(),
       });
       const data = await res.json();
-      if (res.ok) { setToken(data.access_token); router.push("/dashboard"); }
+      if (res.ok) {
+        setToken(data.access_token);
+        localStorage.setItem("nids_username", username);
+        const newUser = localStorage.getItem("nids_new_user");
+        if (newUser === username) {
+          localStorage.removeItem("nids_new_user");
+          router.push("/welcome");
+        } else {
+          router.push("/dashboard");
+        }
+      }
       else setError(data.detail || "Login failed");
     } catch { setError("Connection error"); }
     finally { setLoading(false); }
@@ -354,7 +364,10 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password, email: `${username}@nids.local`, security_question: securityQuestion, security_answer: securityAnswer }),
       });
       const data = await res.json();
-      if (res.ok) { setError(""); setSuccess("Account created! Please login."); setView("login"); setUsername(""); setPassword(""); setSecurityQuestion(""); setSecurityAnswer(""); }
+      if (res.ok) {
+        localStorage.setItem("nids_new_user", username);
+        setError(""); setSuccess("Account created! Please login."); setView("login"); setUsername(""); setPassword(""); setSecurityQuestion(""); setSecurityAnswer("");
+      }
       else setError(data.detail || "Signup failed");
     } catch { setError("Connection error"); }
     finally { setLoading(false); }
@@ -415,8 +428,16 @@ export default function LoginPage() {
               <div className="h-6 w-px bg-gradient-to-b from-transparent via-purple-500/40 to-transparent" />
             </motion.div>
             <h2 className="text-5xl font-black tracking-tight mb-2">
-              <span className="text-white">NIDS </span>
-              <span className="bg-gradient-to-r from-[#782850] via-purple-400 to-blue-400 bg-clip-text text-transparent">SENTINEL</span>
+              <span
+                className="bg-clip-text text-transparent select-none"
+                style={{
+                  backgroundImage: "linear-gradient(90deg, #a855f7, #ec4899, #38bdf8, #a855f7)",
+                  backgroundSize: "200% 100%",
+                  animation: "nids-heading-sweep 10s linear infinite",
+                }}
+              >
+                NIDS SENTINEL
+              </span>
             </h2>
             <p className="text-slate-500 text-sm tracking-wide">Securing Networks &bull; Detecting Threats &bull; AI-Powered</p>
           </div>
@@ -452,7 +473,7 @@ export default function LoginPage() {
 
           {/* Bottom */}
           <p className="text-[11px] text-slate-600">
-            Real-time AI-powered defense &bull; <span className="text-purple-600">Random Forest ML</span> classification
+            Real-time AI-powered defense &bull; <span className="text-purple-600">XGBoost ML</span> classification
           </p>
         </div>
 

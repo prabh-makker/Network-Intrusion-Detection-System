@@ -58,6 +58,26 @@ FEATURE_IMPORTANCE = {
         "severity": "CRITICAL",
         "mitigation": "Immediately isolate affected host. Audit user accounts. Check for rootkits. Rotate credentials."
     },
+    "DDoS": {
+        "description": "Distributed Denial of Service attack. Multiple sources flood target with traffic exceeding its capacity, rendering services unavailable.",
+        "key_indicators": [
+            {"feature": "count", "impact": "CRITICAL", "detail": "Massive concurrent connection count from distributed sources"},
+            {"feature": "src_bytes", "impact": "HIGH", "detail": "High bandwidth consumption per connection"},
+            {"feature": "serror_rate", "impact": "HIGH", "detail": "Elevated SYN error rate indicates volumetric flood"},
+        ],
+        "severity": "CRITICAL",
+        "mitigation": "Activate DDoS scrubbing service. Rate-limit per-source. Enable geo-blocking for attack origin countries."
+    },
+    "R2L (Unauthorized Access)": {
+        "description": "Remote-to-Local unauthorized access attempt. Attacker is exploiting vulnerabilities to gain local user-level access from a remote machine.",
+        "key_indicators": [
+            {"feature": "dst_bytes", "impact": "CRITICAL", "detail": "Unusually high response bytes — data exfiltration pattern"},
+            {"feature": "service", "impact": "HIGH", "detail": "Targeting authentication services (FTP, SSH, Telnet)"},
+            {"feature": "duration", "impact": "MEDIUM", "detail": "Extended session duration indicates persistence attempt"},
+        ],
+        "severity": "HIGH",
+        "mitigation": "Block source IP. Audit authentication logs. Force credential rotation. Enable MFA on all remote services."
+    },
 }
 
 @router.get("/recent")
@@ -109,10 +129,9 @@ async def get_alert_stats(
         .group_by(ThreatLog.label)
         .all()
     )
-    # Top sources should only count UNBLOCKED threats (active attackers)
+    # Top sources — ALL threats (both blocked and active) for historical accuracy
     top_sources = (
         db.query(ThreatLog.src_ip, func.count(ThreatLog.id).label("count"))
-        .filter(ThreatLog.is_blocked == False)
         .group_by(ThreatLog.src_ip)
         .order_by(desc("count"))
         .limit(10)
@@ -202,6 +221,8 @@ async def block_all_active_threats(
 async def get_threat_timeline(
     db: Session = Depends(get_db),
     time_range: str = Query(default="24h"),
+    start_date: str = Query(default=None),
+    end_date: str = Query(default=None),
     current_user=Depends(deps.get_current_active_user)
 ):
     """Return real threat counts grouped by time period for the historical timeline chart."""
@@ -209,7 +230,50 @@ async def get_threat_timeline(
 
     now = datetime.utcnow()
 
-    if time_range == "7d":
+    # Custom date range overrides time_range
+    if time_range == "custom" and start_date and end_date:
+        try:
+            since = datetime.strptime(start_date, "%Y-%m-%d")
+            until = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            days = max(1, (until - since).days + 1)
+            delta = timedelta(days=1)
+            periods = min(days, 90)
+            label_fmt = "%b %d"
+
+            from sqlalchemy import func as sql_func, cast, String
+            group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 10)
+            rows = (
+                db.query(group_expr.label("period"), sql_func.count(ThreatLog.id).label("threat_count"))
+                .filter(ThreatLog.timestamp >= since, ThreatLog.timestamp <= until)
+                .group_by(group_expr).all()
+            )
+            blocked_rows = (
+                db.query(group_expr.label("period"), sql_func.count(ThreatLog.id).label("blocked_count"))
+                .filter(ThreatLog.timestamp >= since, ThreatLog.timestamp <= until, ThreatLog.is_blocked == True)
+                .group_by(group_expr).all()
+            )
+            db_map = {row[0]: row[1] for row in rows}
+            blocked_map = {row[0]: row[1] for row in blocked_rows}
+            result = []
+            for i in range(periods):
+                ps = since + (i * delta)
+                key = ps.strftime("%Y-%m-%d")
+                result.append({"time": ps.strftime(label_fmt), "threats": db_map.get(key, 0), "blocked": blocked_map.get(key, 0), "traffic": db_map.get(key, 0)})
+            return result
+        except ValueError:
+            pass  # fall through to normal time_range handling
+
+    if time_range == "1h":
+        since = now - timedelta(minutes=59)
+        label_fmt = "%H:%M"
+        periods = 12          # 5-minute buckets
+        delta = timedelta(minutes=5)
+    elif time_range == "6h":
+        since = now - timedelta(hours=6)
+        label_fmt = "%H:00"
+        periods = 12          # 30-minute buckets
+        delta = timedelta(minutes=30)
+    elif time_range == "7d":
         since = now - timedelta(days=7)
         label_fmt = "%a"
         periods = 7
@@ -220,7 +284,7 @@ async def get_threat_timeline(
         periods = 30
         delta = timedelta(days=1)
     else:  # 24h default — show 24 hours of data ending now
-        since = now - timedelta(hours=23)  # 23 + the current partial hour = 24 hours
+        since = now - timedelta(hours=23)
         label_fmt = "%H:00"
         periods = 24
         delta = timedelta(hours=1)
@@ -228,8 +292,12 @@ async def get_threat_timeline(
     # Get aggregated threat counts by period (database-level grouping)
     from sqlalchemy import func as sql_func, cast, String
 
-    if time_range == "7d" or time_range == "30d":
+    if time_range in ("7d", "30d"):
         group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 10)  # YYYY-MM-DD
+    elif time_range == "1h":
+        group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 15)  # YYYY-MM-DD HH:MM (5-min)
+    elif time_range == "6h":
+        group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 13)  # YYYY-MM-DD HH (hour-level ok for 30min grouping)
     else:  # 24h
         group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 13)  # YYYY-MM-DD HH
 
@@ -242,21 +310,41 @@ async def get_threat_timeline(
         .group_by(group_expr)
         .all()
     )
+    # Blocked threats per period for history chart
+    blocked_rows = (
+        db.query(
+            group_expr.label("period"),
+            sql_func.count(ThreatLog.id).label("blocked_count")
+        )
+        .filter(ThreatLog.timestamp >= since, ThreatLog.is_blocked == True)
+        .group_by(group_expr)
+        .all()
+    )
 
     db_map = {row[0]: row[1] for row in rows}
+    blocked_map = {row[0]: row[1] for row in blocked_rows}
 
     result = []
     for i in range(periods):
         period_start = since + (i * delta)
-        if time_range == "7d":
+        if time_range in ("7d", "30d"):
             key = period_start.strftime("%Y-%m-%d")
-        elif time_range == "30d":
-            key = period_start.strftime("%Y-%m-%d")
-        else:  # 24h — must match the 13-char substr "YYYY-MM-DD HH"
+        elif time_range == "1h":
+            key = period_start.strftime("%Y-%m-%d %H:%M")[:15]  # YYYY-MM-DD HH:MM
+        elif time_range == "6h":
+            key = period_start.strftime("%Y-%m-%d %H")
+        else:  # 24h
             key = period_start.strftime("%Y-%m-%d %H")
         label = period_start.strftime(label_fmt)
         threats = db_map.get(key, 0)
-        result.append({"time": label, "threats": threats, "traffic": threats * 5 + 50})
+        blocked = blocked_map.get(key, 0)
+        result.append({
+            "time": label,
+            "threats": threats,
+            "blocked": blocked,
+            "active": threats - blocked,
+            "traffic": threats * 5 + 50,
+        })
 
     return result
 

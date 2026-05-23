@@ -37,6 +37,7 @@ export default function ActiveConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [protocolFilter, setProtocolFilter] = useState<string>("all");
+  const [connectionFilter, setConnectionFilter] = useState<"all" | "active" | "threats">("all");
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function ActiveConnectionsPage() {
   }, [router]);
 
   const fetchConnections = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/recent?limit=50`);
       if (res.ok) {
@@ -65,10 +67,13 @@ export default function ActiveConnectionsPage() {
     return () => clearInterval(interval);
   }, [authenticated, fetchConnections]);
 
-  const filteredConnections =
-    protocolFilter === "all"
-      ? connections
-      : connections.filter((c) => c.protocol.toUpperCase() === protocolFilter.toUpperCase());
+  const filteredConnections = connections
+    .filter((c) => {
+      if (connectionFilter === "active") return !c.is_blocked;
+      if (connectionFilter === "threats") return !c.is_blocked && c.label !== "Normal" && c.label !== "Benign";
+      return true;
+    })
+    .filter((c) => protocolFilter === "all" || c.protocol.toUpperCase() === protocolFilter.toUpperCase());
 
   const protocols = ["all", ...Array.from(new Set(connections.map((c) => c.protocol.toUpperCase())))];
   const activeCount = connections.filter((c) => !c.is_blocked).length;
@@ -96,13 +101,35 @@ export default function ActiveConnectionsPage() {
               Real-time network connection monitoring · Updates every 5 seconds
             </p>
           </div>
-          <button
-            onClick={fetchConnections}
-            className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-500/30 text-cyan-400 transition-all"
-            title="Refresh"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* View filter */}
+            <div className={`flex rounded-lg overflow-hidden border ${isDark ? "border-purple-500/30" : "border-purple-300/40"}`}>
+              {(["all", "active", "threats"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setConnectionFilter(f)}
+                  className={`px-4 py-2 text-sm font-semibold transition-all ${
+                    connectionFilter === f
+                      ? isDark
+                        ? "bg-cyan-500/30 text-cyan-300"
+                        : "bg-cyan-100 text-cyan-800"
+                      : isDark
+                        ? "bg-transparent text-purple-300 hover:bg-purple-500/10"
+                        : "bg-white text-purple-600 hover:bg-purple-50"
+                  }`}
+                >
+                  {f === "all" ? "All" : f === "active" ? "Active Only" : "Threats"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={fetchConnections}
+              className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-500/30 text-cyan-400 transition-all"
+              title="Refresh"
+            >
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

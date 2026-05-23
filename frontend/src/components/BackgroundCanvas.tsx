@@ -26,7 +26,9 @@ export default function BackgroundCanvas() {
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
-    renderer.setClearColor(isDark ? 0x0a0e1a : 0xede9fe, 1);
+    // Light mode: transparent — CSS animated light gradient shows through
+    // Dark mode: solid dark navy background
+    renderer.setClearColor(isDark ? 0x0a0e1a : 0xf3e8ff, isDark ? 1 : 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     // Theme-aware color palettes

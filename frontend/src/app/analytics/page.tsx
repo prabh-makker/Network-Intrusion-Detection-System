@@ -4,14 +4,15 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
-  Calendar,
   Clock,
   ArrowLeft,
-  Download,
   RefreshCw,
   BarChart3,
   PieChart as PieChartIcon,
   Activity,
+  ShieldCheck,
+  ShieldAlert,
+  Target,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -41,11 +42,12 @@ interface TimelinePoint {
 }
 
 const TIME_RANGES = [
-  { value: "1h", label: "Last 1 Hour" },
-  { value: "6h", label: "Last 6 Hours" },
-  { value: "24h", label: "Last 24 Hours" },
-  { value: "7d", label: "Last 7 Days" },
-  { value: "30d", label: "Last 30 Days" },
+  { value: "1h", label: "1 Hour" },
+  { value: "6h", label: "6 Hours" },
+  { value: "24h", label: "24 Hours" },
+  { value: "7d", label: "7 Days" },
+  { value: "30d", label: "30 Days" },
+  { value: "custom", label: "Custom" },
 ];
 
 const COLORS = ["#ef4444", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#10b981"];
@@ -61,6 +63,8 @@ export default function AnalyticsPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -70,7 +74,11 @@ export default function AnalyticsPage() {
   const fetchTimelineData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/timeline?range=${timeRange}`);
+      let url = `${apiUrl}/api/v1/alerts/timeline?time_range=${timeRange}`;
+      if (timeRange === "custom" && customStart && customEnd) {
+        url = `${apiUrl}/api/v1/alerts/timeline?time_range=custom&start_date=${customStart}&end_date=${customEnd}`;
+      }
+      const res = await fetchWithAuth(url);
       if (res.ok) {
         const data = await res.json();
         setTimelineData(data);
@@ -85,18 +93,23 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, timeRange]);
+  }, [apiUrl, timeRange, customStart, customEnd]);
 
   useEffect(() => {
     if (!authenticated) return;
     fetchTimelineData();
+    const interval = setInterval(fetchTimelineData, 5000);
+    return () => clearInterval(interval);
   }, [authenticated, fetchTimelineData]);
 
   const pieData = stats?.by_label
     ? Object.entries(stats.by_label).map(([name, value]) => ({ name, value: value as number }))
     : [];
 
-  const totalThreats = pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalThreats = stats?.total_threats ?? pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalBlocked = stats?.blocked_threats ?? 0;
+  const totalActive = stats?.active_threats ?? 0;
+  const blockRate = totalThreats > 0 ? Math.round((totalBlocked / totalThreats) * 100) : 0;
   const peakThreats = Math.max(...timelineData.map((d) => d.threats || 0), 0);
   const avgThreats = timelineData.length > 0
     ? Math.round(timelineData.reduce((sum, d) => sum + (d.threats || 0), 0) / timelineData.length)
@@ -158,6 +171,31 @@ export default function AnalyticsPage() {
                 {range.label}
               </button>
             ))}
+            {/* Custom date range inputs */}
+            {timeRange === "custom" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${isDark ? "bg-purple-900/30 border-purple-500/40 text-purple-200" : "bg-white border-purple-300 text-purple-900"}`}
+                />
+                <span className={`text-sm ${isDark ? "text-purple-400" : "text-purple-600"}`}>to</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${isDark ? "bg-purple-900/30 border-purple-500/40 text-purple-200" : "bg-white border-purple-300 text-purple-900"}`}
+                />
+                <button
+                  onClick={fetchTimelineData}
+                  disabled={!customStart || !customEnd}
+                  className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-2">
               <span className={`text-sm ${isDark ? "text-purple-300" : "text-purple-700"}`}>Chart:</span>
               <button
@@ -177,47 +215,92 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl ${isDark ? "border border-red-500/30 bg-gradient-to-br from-red-900/20 to-pink-900/10" : "border border-red-400/20 bg-red-50/30"} backdrop-blur-xl`}
+            className={`p-4 rounded-xl ${isDark ? "border border-red-500/30 bg-gradient-to-br from-red-900/20 to-pink-900/10" : "border border-red-400/20 bg-red-50"} backdrop-blur-xl`}
           >
-            <p className={`text-xs ${isDark ? "text-red-300" : "text-red-700"}`}>Total Threats</p>
-            <p className={`text-3xl font-bold mt-1 ${isDark ? "text-white" : "text-red-950"}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldAlert size={14} className={isDark ? "text-red-400" : "text-red-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-red-300" : "text-red-700"}`}>Total Detected</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-red-950"}`}>
               {totalThreats.toLocaleString()}
             </p>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className={`p-4 rounded-xl ${isDark ? "border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-teal-900/10" : "border border-emerald-400/20 bg-emerald-50"} backdrop-blur-xl`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck size={14} className={isDark ? "text-emerald-400" : "text-emerald-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>Total Blocked</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-emerald-950"}`}>
+              {totalBlocked.toLocaleString()}
+            </p>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className={`p-4 rounded-xl ${isDark ? "border border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/10" : "border border-amber-400/20 bg-amber-50/30"} backdrop-blur-xl`}
+            className={`p-4 rounded-xl ${isDark ? "border border-orange-500/30 bg-gradient-to-br from-orange-900/20 to-red-900/10" : "border border-orange-400/20 bg-orange-50"} backdrop-blur-xl`}
           >
-            <p className={`text-xs ${isDark ? "text-amber-300" : "text-amber-700"}`}>Peak (per period)</p>
-            <p className={`text-3xl font-bold mt-1 ${isDark ? "text-white" : "text-amber-950"}`}>
-              {peakThreats.toLocaleString()}
+            <div className="flex items-center gap-2 mb-1">
+              <Target size={14} className={isDark ? "text-orange-400" : "text-orange-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-orange-300" : "text-orange-700"}`}>Still Active</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-orange-950"}`}>
+              {totalActive.toLocaleString()}
             </p>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className={`p-4 rounded-xl ${isDark ? "border border-cyan-500/30 bg-gradient-to-br from-cyan-900/20 to-blue-900/10" : "border border-cyan-400/20 bg-cyan-50"} backdrop-blur-xl`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Activity size={14} className={isDark ? "text-cyan-400" : "text-cyan-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-cyan-300" : "text-cyan-700"}`}>Block Rate</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-cyan-950"}`}>
+              {blockRate}%
+            </p>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className={`p-4 rounded-xl ${isDark ? "border border-cyan-500/30 bg-gradient-to-br from-cyan-900/20 to-blue-900/10" : "border border-cyan-400/20 bg-cyan-50/30"} backdrop-blur-xl`}
+            className={`p-4 rounded-xl ${isDark ? "border border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/10" : "border border-amber-400/20 bg-amber-50"} backdrop-blur-xl`}
           >
-            <p className={`text-xs ${isDark ? "text-cyan-300" : "text-cyan-700"}`}>Average</p>
-            <p className={`text-3xl font-bold mt-1 ${isDark ? "text-white" : "text-cyan-950"}`}>
-              {avgThreats.toLocaleString()}
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 size={14} className={isDark ? "text-amber-400" : "text-amber-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-amber-300" : "text-amber-700"}`}>Peak / Period</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-amber-950"}`}>
+              {peakThreats.toLocaleString()}
             </p>
           </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={`p-4 rounded-xl ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-purple-400/20 bg-purple-50/30"} backdrop-blur-xl`}
+            transition={{ delay: 0.25 }}
+            className={`p-4 rounded-xl ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-purple-400/20 bg-purple-50"} backdrop-blur-xl`}
           >
-            <p className={`text-xs ${isDark ? "text-purple-300" : "text-purple-700"}`}>Categories</p>
-            <p className={`text-3xl font-bold mt-1 ${isDark ? "text-white" : "text-purple-950"}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <PieChartIcon size={14} className={isDark ? "text-purple-400" : "text-purple-600"} />
+              <p className={`text-xs font-semibold ${isDark ? "text-purple-300" : "text-purple-700"}`}>Categories</p>
+            </div>
+            <p className={`text-3xl font-black ${isDark ? "text-white" : "text-purple-950"}`}>
               {pieData.length}
             </p>
           </motion.div>
@@ -245,12 +328,16 @@ export default function AnalyticsPage() {
                 <AreaChart data={timelineData}>
                   <defs>
                     <linearGradient id="anaTraffic" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.6} />
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
                       <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="anaThreats" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.6} />
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.5} />
                       <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="anaBlocked" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(148,163,184,0.1)" : "rgba(148,163,184,0.3)"} vertical={false} />
@@ -266,7 +353,8 @@ export default function AnalyticsPage() {
                   />
                   <Legend />
                   <Area type="monotone" dataKey="traffic" stroke="#06b6d4" strokeWidth={2} fill="url(#anaTraffic)" name="Traffic" />
-                  <Area type="monotone" dataKey="threats" stroke="#ef4444" strokeWidth={2} fill="url(#anaThreats)" name="Threats" />
+                  <Area type="monotone" dataKey="threats" stroke="#ef4444" strokeWidth={2} fill="url(#anaThreats)" name="Detected" />
+                  <Area type="monotone" dataKey="blocked" stroke="#10b981" strokeWidth={2} fill="url(#anaBlocked)" name="Blocked" />
                 </AreaChart>
               ) : (
                 <BarChart data={timelineData}>
@@ -282,7 +370,8 @@ export default function AnalyticsPage() {
                   />
                   <Legend />
                   <Bar dataKey="traffic" fill="#06b6d4" name="Traffic" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="threats" fill="#ef4444" name="Threats" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="threats" fill="#ef4444" name="Detected" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="blocked" fill="#10b981" name="Blocked" radius={[4, 4, 0, 0]} />
                 </BarChart>
               )}
             </ResponsiveContainer>

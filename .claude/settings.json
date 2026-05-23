@@ -1,0 +1,96 @@
+{
+  "description": "NIDS Claude Code automation configuration",
+  "permissions": {
+    "allow": [
+      "Bash(pytest*)",
+      "Bash(npm test*)",
+      "Bash(docker-compose*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Edit",
+      "Write",
+      "Read"
+    ],
+    "block": [
+      "Bash(*rm -rf*)",
+      "Bash(*git reset --hard*)",
+      "Bash(*git push --force*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": {
+      "Edit": {
+        "conditions": [
+          {
+            "pattern": "**/*.py",
+            "except": ["tests/", "migrations/"],
+            "run": "pytest backend/tests/ -q --tb=short 2>/dev/null || true"
+          },
+          {
+            "pattern": "**/*.tsx",
+            "except": ["node_modules/"],
+            "run": "npm run test -- --coverage 2>/dev/null || true"
+          },
+          {
+            "pattern": "ml-models/**/*.py",
+            "except": ["data/"],
+            "run": "echo '[Auto-check] ML code modified - consider retraining model'"
+          }
+        ]
+      }
+    },
+    "PreToolUse": {
+      "Edit": {
+        "conditions": [
+          {
+            "pattern": "**/.env*",
+            "require": "confirmation",
+            "message": "SECURITY: This is a secret/environment file. Only edit if necessary. Never commit secrets."
+          },
+          {
+            "pattern": "**/secret*",
+            "require": "confirmation",
+            "message": "SECURITY: This file contains secrets. Do not commit to version control."
+          },
+          {
+            "pattern": "**/config.py",
+            "require": "confirmation",
+            "message": "CAUTION: Backend configuration file. Changes may affect all services."
+          }
+        ]
+      }
+    }
+  },
+  "automations": {
+    "skills": {
+      "enabled": ["model-deploy", "security-review"],
+      "context": "fork"
+    },
+    "subagents": {
+      "auto-run": false,
+      "available": ["security-reviewer", "test-coverage-analyzer"]
+    }
+  },
+  "ml_pipeline": {
+    "training_models": [
+      "nids_xgb_weighted",
+      "nids_xgb_hybrid",
+      "nids_xgb_ensemble",
+      "nids_xgb_transfer"
+    ],
+    "min_accuracy": 0.968,
+    "model_dir": "/app/shared-models",
+    "auto_version": true
+  },
+  "testing": {
+    "backend_coverage_target": 0.95,
+    "frontend_coverage_target": 0.95,
+    "run_on_save": true
+  },
+  "security": {
+    "block_hardcoded_secrets": true,
+    "require_jwt_validation": true,
+    "require_input_sanitization": true,
+    "require_sql_parameterization": true
+  }
+}

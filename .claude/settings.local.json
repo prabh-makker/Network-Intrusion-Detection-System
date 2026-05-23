@@ -199,7 +199,15 @@
       "Bash(curl -s -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:8000/api/v1/login/access-token -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=admin&password=Admin@12345')",
       "Bash(wmic process *)",
       "Bash(curl -s http://localhost:8000/api/v1/alerts/stats -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0dXNlciIsImV4cCI6OTk5OTk5OTk5OX0.test\")",
-      "Bash(python -m json.tool)"
+      "Bash(python -m json.tool)",
+      "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\frontend\\\\Dockerfile\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\sniffer\\\\Dockerfile\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\frontend\\\\.dockerignore\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\sniffer\\\\.dockerignore\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\.env.example\")",
+      "Bash(docker cp *)",
+      "Bash(docker compose *)",
+      "Bash(npx jest *)"
     ],
     "deny": [
       "Edit(.env)",

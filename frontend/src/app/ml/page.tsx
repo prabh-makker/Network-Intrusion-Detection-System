@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
+// BarChart used for confusion matrix visualization only
 import {
   BrainCircuit, Cpu, Target, Layers, CheckCircle2,
   AlertTriangle, Activity, Table2, FlaskConical, Zap, Info,
@@ -146,114 +147,79 @@ function ConfusionMatrix({ matrix, labels }: { matrix: number[][]; labels: strin
   );
 }
 
-// ─── Feature Importance Enhanced ──────────────────────────────────────────────
+// ─── Feature Importance — Animated Gradient Pills ────────────────────────────
+
+const PILL_GRADIENTS = [
+  ["#7c3aed","#a78bfa"], ["#2563eb","#60a5fa"], ["#0891b2","#22d3ee"],
+  ["#059669","#34d399"], ["#d97706","#fbbf24"], ["#dc2626","#f87171"],
+  ["#7c2d8e","#c084fc"], ["#be185d","#f472b6"], ["#0f766e","#2dd4bf"],
+  ["#4338ca","#818cf8"], ["#374151","#94a3b8"], ["#0284c7","#38bdf8"],
+];
 
 function FeatureImportanceChart({ data, descriptions }: {
   data: Array<{ name: string; value: number; type: string }>;
   descriptions: Record<string, string>;
 }) {
-  // Add ranks + format for display
-  const rankedData = data
-    .map((d, idx) => ({
-      ...d,
-      rank: idx + 1,
-      valuePercent: (d.value * 100).toFixed(2),
-    }))
-    .sort((a, b) => b.value - a.value);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const rankedData = [...data]
+    .sort((a, b) => b.value - a.value)
+    .map((d, idx) => ({ ...d, rank: idx + 1, pct: (d.value * 100).toFixed(2) }));
+
+  const maxVal = rankedData[0]?.value || 1;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Legend */}
-      <div className="flex gap-6 text-xs font-semibold">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🔢</span>
-          <span className="text-[var(--muted)]">Numeric</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🏷️</span>
-          <span className="text-[var(--muted)]">Categorical</span>
+      <div className={`flex gap-6 text-xs font-semibold mb-4 px-1`}>
+        <div className="flex items-center gap-2"><span>🔢</span><span className={isDark ? "text-purple-300" : "text-purple-700"}>Numeric</span></div>
+        <div className="flex items-center gap-2"><span>🏷️</span><span className={isDark ? "text-purple-300" : "text-purple-700"}>Categorical</span></div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className={`text-xs ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>Live · refreshes every 30s</span>
         </div>
       </div>
 
-      {/* Chart - Fixed Height Container */}
-      <div className="w-full h-[500px] mb-8">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={rankedData}
-            layout="vertical"
-            margin={{ left: 150, right: 40, top: 10, bottom: 10 }}
-          >
-            <XAxis type="number" tick={{ fontSize: 10, fill: "var(--muted)" }} tickFormatter={v => `${(v * 100).toFixed(1)}%`} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              tick={{ fontSize: 11, fill: "var(--foreground)" }}
-              width={140}
-            />
-            <Tooltip
-              formatter={(v: any) => {
-                if (typeof v === 'number') return [`${(v * 100).toFixed(3)}%`, "Importance"];
-                return [v, "Importance"];
-              }}
-              contentStyle={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 10, fontSize: 11 }}
-              cursor={{ fill: "rgba(100,100,100,0.1)" }}
-            />
-            <Bar dataKey="value" fill="#8b5cf6" radius={[0, 8, 8, 0]}>
-              {rankedData.map((entry, i) => (
-                <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Feature Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-        {rankedData.map((feature, idx) => (
+      {rankedData.map((f, idx) => {
+        const [c1, c2] = PILL_GRADIENTS[idx % 12];
+        const widthPct = (f.value / maxVal) * 100;
+        return (
           <motion.div
-            key={feature.name}
-            initial={{ opacity: 0, x: -8 }}
+            key={f.name}
+            initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className="glass-panel rounded-lg p-4 border border-[var(--glass-border)]/50 hover:border-[var(--glass-border)]/80 transition-all"
+            transition={{ delay: idx * 0.04, type: "spring", stiffness: 200 }}
+            className={`rounded-xl border p-3 ${isDark ? "bg-white/5 border-white/10 hover:bg-white/8" : "bg-white border-slate-200 shadow-sm hover:shadow-md"} transition-all`}
           >
-            {/* Header with Rank + Type */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-                  <span className="text-xs font-bold text-purple-400">#{feature.rank}</span>
-                </div>
-                <div className="text-lg">{TYPE_ICONS[feature.type] || "?"}</div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border"
+                style={{ background: `${c1}25`, borderColor: `${c1}60` }}>
+                <span className="text-xs font-black" style={{ color: c1 }}>#{f.rank}</span>
               </div>
-              <span className="text-xs bg-[var(--glass-bg)] px-2.5 py-1 rounded-full text-[var(--muted)] font-medium">
-                {feature.type}
-              </span>
+              <span className={`text-sm font-bold flex-1 font-mono ${isDark ? "text-slate-100" : "text-slate-800"}`}>{f.name}</span>
+              <span className="text-sm font-black font-mono" style={{ color: c1 }}>{f.pct}%</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                f.type === "numeric"
+                  ? isDark ? "bg-blue-500/20 text-blue-300" : "bg-blue-100 text-blue-700"
+                  : isDark ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-700"
+              }`}>{f.type === "numeric" ? "🔢" : "🏷️"}</span>
             </div>
-
-            {/* Feature Name */}
-            <p className="font-bold text-[var(--foreground)] text-sm mb-1">{feature.name}</p>
-
-            {/* Description */}
-            <p className="text-xs text-[var(--muted)] mb-3 line-clamp-2">{descriptions[feature.name] || "—"}</p>
-
-            {/* Importance Bar + Value */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2.5 bg-[var(--glass-border)] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(100, feature.value * 800)}%`,
-                    background: BAR_COLORS[idx % BAR_COLORS.length],
-                  }}
-                />
-              </div>
-              <span className="font-bold text-sm font-mono whitespace-nowrap" style={{ color: BAR_COLORS[idx % BAR_COLORS.length] }}>
-                {feature.valuePercent}%
-              </span>
+            <div className={`w-full h-2.5 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-100"}`}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${widthPct}%` }}
+                transition={{ delay: idx * 0.04 + 0.15, duration: 0.7, ease: "easeOut" }}
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(90deg, ${c1}, ${c2})` }}
+              />
             </div>
+            {descriptions[f.name] && (
+              <p className={`text-xs mt-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{descriptions[f.name]}</p>
+            )}
           </motion.div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -270,33 +236,34 @@ export default function MLAnalyticsPage() {
   const [packets, setPackets] = useState<Packet[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [loadingPackets, setLoadingPackets] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
   }, [router]);
 
-  useEffect(() => {
-    fetchWithAuth(`${apiUrl}/api/v1/models/metrics`)
-      .then(r => r.json())
-      .then(setMetrics)
-      .catch(console.error)
-      .finally(() => setLoadingMetrics(false));
-
-    fetchWithAuth(`${apiUrl}/api/v1/models/preprocessed?limit=15`)
-      .then(r => r.json())
-      .then(d => setPackets(d.packets || []))
-      .catch(console.error)
-      .finally(() => setLoadingPackets(false));
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const r = await fetchWithAuth(`${apiUrl}/api/v1/models/metrics`);
+      if (r.ok) { setMetrics(await r.json()); setLastUpdated(new Date()); }
+    } catch {} finally { setLoadingMetrics(false); }
   }, [apiUrl]);
 
+  const fetchPackets = useCallback(async () => {
+    try {
+      const r = await fetchWithAuth(`${apiUrl}/api/v1/models/preprocessed?limit=15`);
+      if (r.ok) { const d = await r.json(); setPackets(d.packets || []); }
+    } catch {} finally { setLoadingPackets(false); }
+  }, [apiUrl]);
+
+  // Real-time: packets every 5s, model metrics every 30s
   useEffect(() => {
-    if (!loadingMetrics && !metrics) {
-      console.warn("ML Page: Failed to load model metrics from API");
-    }
-    if (!loadingPackets && packets.length === 0) {
-      console.info("ML Page: No packet data loaded - DB may be empty");
-    }
-  }, [loadingMetrics, metrics, loadingPackets, packets]);
+    fetchMetrics();
+    fetchPackets();
+    const pInterval = setInterval(fetchPackets, 5000);
+    const mInterval = setInterval(fetchMetrics, 30000);
+    return () => { clearInterval(pInterval); clearInterval(mInterval); };
+  }, [fetchMetrics, fetchPackets]);
 
   const importanceData = metrics
     ? Object.entries(metrics.model.feature_importances)
@@ -333,12 +300,25 @@ export default function MLAnalyticsPage() {
               XGBoost Random Forest model performance · feature extraction · preprocessed traffic analysis
             </p>
           </div>
-          {metrics && (
-            <div className="hidden md:flex items-center gap-2 glass-panel px-4 py-2 rounded-xl text-xs font-semibold text-[var(--foreground)]">
-              <Cpu size={13} />
-              {metrics.model.type} · {metrics.model.n_estimators} trees · depth {metrics.model.max_depth}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {metrics && (
+              <div className="hidden md:flex items-center gap-2 glass-panel px-4 py-2 rounded-xl text-xs font-semibold text-[var(--foreground)]">
+                <Cpu size={13} />
+                {metrics.model.type} · {metrics.model.n_estimators} trees · depth {metrics.model.max_depth}
+              </div>
+            )}
+            <button onClick={() => { fetchMetrics(); fetchPackets(); }}
+              className="p-2.5 rounded-xl border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-all"
+              title="Refresh now">
+              <Activity size={16} className={loadingMetrics ? "animate-spin" : ""} />
+            </button>
+            {lastUpdated && (
+              <div className="hidden md:flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lastUpdated.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

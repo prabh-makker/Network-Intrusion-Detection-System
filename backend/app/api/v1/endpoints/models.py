@@ -5,7 +5,7 @@ from sqlalchemy import func, desc
 from app.api import deps
 from app.db.session import get_db
 from app.models.models import ThreatLog
-from app.core.model_loader import load_model_and_metadata
+from app.core.model_loader import ModelLoader
 
 router = APIRouter()
 
@@ -69,10 +69,12 @@ def get_model_metrics(
     current_user=Depends(deps.get_current_active_user),
 ):
     """Return RF model info, feature importances, and accuracy metrics."""
-    model, meta = load_model_and_metadata()
+    # nids_xgb.pkl does not exist in container; load nids_xgb_ensemble which does
+    model = ModelLoader.load_model("nids_xgb_ensemble")
+    meta  = ModelLoader.load_metadata("nids_xgb_ensemble")
 
-    feature_names = meta["features"] if meta else list(FEATURE_DESCRIPTIONS.keys())
-    classes       = meta["classes"]  if meta else list(STATIC_METRICS["by_class"].keys())
+    feature_names = (meta.get("features") if meta else None) or list(FEATURE_DESCRIPTIONS.keys())
+    classes       = (meta.get("classes")  if meta else None) or list(STATIC_METRICS["by_class"].keys())
 
     # Real feature importances from loaded model, else uniform fallback
     if model is not None and hasattr(model, "feature_importances_"):

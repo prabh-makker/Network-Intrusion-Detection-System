@@ -70,6 +70,7 @@ type DashboardStats = {
   active_threats?: number;
   blocked_threats?: number;
   by_label: Record<string, number>;
+  by_label_active?: Record<string, number>;
   top_sources: { ip: string; count: number }[];
 };
 
@@ -86,8 +87,10 @@ type RecentAlert = {
 
 const THREAT_COLORS: Record<string, string> = {
   DoS: "#06b6d4",
+  DDoS: "#d97706",
   "DDoS (Ping of Death)": "#ec4899",
   Probe: "#f59e0b",
+  "R2L (Unauthorized Access)": "#f97316",
   "U2R (Root Access)": "#ef4444",
 };
 
@@ -231,10 +234,10 @@ function ThreatIndicator({
             className={`text-2xl font-bold mt-1 ${isDark ? "text-white" : "text-purple-950"}`}
             style={{ color: threatColor }}
           >
-            {threat.value} <span className="text-sm font-normal">incidents</span>
+            {threat.value} <span className="text-sm font-normal">active</span>
           </p>
           <p className={`text-xs mt-1 ${isDark ? "text-purple-300" : "text-purple-700"}`}>
-            {percentage}% of all threats
+            {percentage}% of active threats
           </p>
         </div>
       </div>
@@ -410,7 +413,8 @@ const getStatCards = (
   threatCount: number,
   stats: DashboardStats | null,
   isLive: boolean,
-  packets: Packet[]
+  packets: Packet[],
+  connectionCount: number
 ) => [
   {
     label: "Packets Analyzed",
@@ -430,10 +434,10 @@ const getStatCards = (
   },
   {
     label: "Active Connections",
-    value: isLive ? packets.length : 0,
+    value: connectionCount,
     icon: Radio,
     color: ROYAL_COLORS.deepPurple,
-    trend: isLive ? "Streaming" : "Idle",
+    trend: `${connectionCount} active now`,
   },
   {
     label: "Detection Rate",
@@ -476,6 +480,7 @@ export default function NIDSDashboard() {
   const [securedCount, setSecuredCount] = useState(0);
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [isBulkBlocking, setIsBulkBlocking] = useState(false);
+  const [connectionCount, setConnectionCount] = useState(0);
   const chartBufferRef = useRef<
     { time: string; traffic: number; threats: number }[]
   >([]);
@@ -523,6 +528,23 @@ export default function NIDSDashboard() {
     return () => clearInterval(interval);
   }, [fetchStats, fetchAlerts]);
 
+  // Fetch real active connections count every 5s
+  useEffect(() => {
+    if (!authenticated) return;
+    const fetchConnectionCount = async () => {
+      try {
+        const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/recent?limit=50`);
+        if (res.ok) {
+          const data = await res.json();
+          setConnectionCount(data.filter((c: any) => !c.is_blocked).length);
+        }
+      } catch {}
+    };
+    fetchConnectionCount();
+    const interval = setInterval(fetchConnectionCount, 5000);
+    return () => clearInterval(interval);
+  }, [authenticated, apiUrl]);
+
   const fetchTimeline = useCallback(async () => {
     setLoadingTimeline(true);
     try {
@@ -555,7 +577,8 @@ export default function NIDSDashboard() {
     const THREATS = ["DoS", "DDoS", "Probe", "U2R", "R2L"];
     const THREAT_WEIGHTS = [0.40, 0.20, 0.20, 0.10, 0.10]; // DoS most common
     const PROTOCOLS = ["TCP", "UDP", "ICMP", "HTTP"];
-    const SRC_BLOCKS = ["185.10", "13.210", "114.119", "45.22", "172.67", "103.22", "198.51.100", "203.0.113"];
+    // All 2-octet prefixes so generated IPs always have exactly 4 octets
+    const SRC_BLOCKS = ["185.10", "13.210", "114.119", "45.22", "172.67", "103.22", "198.51", "203.0"];
 
     const pickWeighted = (arr: string[], weights: number[]): string => {
       const r = Math.random();
@@ -909,8 +932,13 @@ export default function NIDSDashboard() {
   };
   const StatusIcon = statusConfig[currentStatus].icon;
 
+  // Show ACTIVE threats (real-time), not historical totals
+  // This focuses the dashboard on actionable, current threats
+  const activeThreats = stats?.by_label_active || {};
   const pieData = stats
-    ? Object.entries(stats.by_label).map(([name, value]) => ({ name, value }))
+    ? Object.entries(activeThreats)
+        .map(([name, value]) => ({ name, value }))
+        .filter(d => d.value > 0)
     : [];
   const threatCategoriesForOrbs = pieData.slice(0, 3);
 
@@ -1054,7 +1082,7 @@ export default function NIDSDashboard() {
         <div className="max-w-7xl mx-auto p-6 space-y-6">
           {/* STAT CARDS WITH 3D ORBS - Now Clickable */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {getStatCards(totalPackets, threatCount, stats, isLive, packets).map((s, i) => {
+            {getStatCards(totalPackets, threatCount, stats, isLive, packets, connectionCount).map((s, i) => {
               // Determine route based on stat card type
               const routes = ["/analytics", "/alerts", "/connections", "/ml"];
               const targetRoute = routes[i] || "/dashboard";
@@ -1070,7 +1098,7 @@ export default function NIDSDashboard() {
               >
                 {/* Gradient background */}
                 <div
-                  className={`absolute inset-0 border ${isDark ? "bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-purple-900/5 border-purple-500/20" : "bg-purple-950/10 border-purple-400/20"}`}
+                  className={`absolute inset-0 border ${isDark ? "bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-purple-900/5 border-purple-500/20" : "bg-white border-slate-200 shadow-sm"}`}
                 />
 
                 {/* Hover glow effect */}
@@ -1134,7 +1162,7 @@ export default function NIDSDashboard() {
                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    className={`relative rounded-2xl overflow-hidden ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-purple-400/20 bg-purple-950/10"} backdrop-blur-xl`}
+                    className={`relative rounded-2xl overflow-hidden ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-slate-200 bg-white shadow-sm"} backdrop-blur-xl`}
                     style={{ height: 300 }}
                   >
                     <ThreatIndicator
@@ -1278,7 +1306,7 @@ export default function NIDSDashboard() {
                 className={`text-xl font-bold flex items-center gap-2 mb-6 ${isDark ? "text-white" : "text-purple-950"}`}
               >
                 <Target size={20} style={{ color: "#ec4899" }} />
-                Threat Breakdown
+                Active Threats (Real-time)
               </h3>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
@@ -1413,21 +1441,21 @@ export default function NIDSDashboard() {
             )}
             <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-purple-500/20">
               <div>
-                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>DoS Attacks</p>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Active DoS</p>
                 <p className="text-lg font-bold text-red-400">
-                  {((stats?.by_label?.["DoS"] || 0) + (stats?.by_label?.["DDoS"] || 0) + (stats?.by_label?.["DDoS (Ping of Death)"] || 0)).toLocaleString()}
+                  {((stats?.by_label_active?.["DoS"] || 0) + (stats?.by_label_active?.["DDoS"] || 0) + (stats?.by_label_active?.["DDoS (Ping of Death)"] || 0)).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Probe Activity</p>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Active Probes</p>
                 <p className="text-lg font-bold text-amber-400">
-                  {((stats?.by_label?.["Probe"] || 0) + (stats?.by_label?.["Port Scan"] || 0)).toLocaleString()}
+                  {((stats?.by_label_active?.["Probe"] || 0) + (stats?.by_label_active?.["Port Scan"] || 0)).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Privilege Escalation</p>
+                <p className={`text-xs ${isDark ? "text-purple-400" : "text-purple-700"}`}>Active Escalations</p>
                 <p className="text-lg font-bold text-pink-400">
-                  {((stats?.by_label?.["U2R"] || 0) + (stats?.by_label?.["U2R (Root Access)"] || 0) + (stats?.by_label?.["R2L"] || 0)).toLocaleString()}
+                  {((stats?.by_label_active?.["U2R"] || 0) + (stats?.by_label_active?.["U2R (Root Access)"] || 0) + (stats?.by_label_active?.["R2L"] || 0)).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -1973,27 +2001,27 @@ export default function NIDSDashboard() {
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className={`p-3 rounded-lg ${isDark ? "bg-red-900/30 border border-red-500/30" : "bg-red-50 border border-red-300"}`}>
-                      <p className={`text-xs ${isDark ? "text-red-300" : "text-red-700"}`}>DoS/DDoS</p>
+                      <p className={`text-xs ${isDark ? "text-red-300" : "text-red-700"}`}>Active DoS/DDoS</p>
                       <p className={`text-2xl font-bold ${isDark ? "text-red-400" : "text-red-900"}`}>
-                        {((stats?.by_label?.["DoS"] || 0) + (stats?.by_label?.["DDoS"] || 0) + (stats?.by_label?.["DDoS (Ping of Death)"] || 0)).toLocaleString()}
+                        {((stats?.by_label_active?.["DoS"] || 0) + (stats?.by_label_active?.["DDoS"] || 0) + (stats?.by_label_active?.["DDoS (Ping of Death)"] || 0)).toLocaleString()}
                       </p>
                     </div>
                     <div className={`p-3 rounded-lg ${isDark ? "bg-amber-900/30 border border-amber-500/30" : "bg-amber-50 border border-amber-300"}`}>
-                      <p className={`text-xs ${isDark ? "text-amber-300" : "text-amber-700"}`}>Probe Scans</p>
+                      <p className={`text-xs ${isDark ? "text-amber-300" : "text-amber-700"}`}>Active Probes</p>
                       <p className={`text-2xl font-bold ${isDark ? "text-amber-400" : "text-amber-900"}`}>
-                        {((stats?.by_label?.["Probe"] || 0) + (stats?.by_label?.["Port Scan"] || 0)).toLocaleString()}
+                        {((stats?.by_label_active?.["Probe"] || 0) + (stats?.by_label_active?.["Port Scan"] || 0)).toLocaleString()}
                       </p>
                     </div>
                     <div className={`p-3 rounded-lg ${isDark ? "bg-pink-900/30 border border-pink-500/30" : "bg-pink-50 border border-pink-300"}`}>
-                      <p className={`text-xs ${isDark ? "text-pink-300" : "text-pink-700"}`}>U2R/R2L</p>
+                      <p className={`text-xs ${isDark ? "text-pink-300" : "text-pink-700"}`}>Active U2R/R2L</p>
                       <p className={`text-2xl font-bold ${isDark ? "text-pink-400" : "text-pink-900"}`}>
-                        {((stats?.by_label?.["U2R"] || 0) + (stats?.by_label?.["U2R (Root Access)"] || 0) + (stats?.by_label?.["R2L"] || 0)).toLocaleString()}
+                        {((stats?.by_label_active?.["U2R"] || 0) + (stats?.by_label_active?.["U2R (Root Access)"] || 0) + (stats?.by_label_active?.["R2L"] || 0)).toLocaleString()}
                       </p>
                     </div>
                     <div className={`p-3 rounded-lg ${isDark ? "bg-purple-900/30 border border-purple-500/30" : "bg-purple-50 border border-purple-300"}`}>
-                      <p className={`text-xs ${isDark ? "text-purple-300" : "text-purple-700"}`}>Total Threats</p>
+                      <p className={`text-xs ${isDark ? "text-purple-300" : "text-purple-700"}`}>Active Threats</p>
                       <p className={`text-2xl font-bold ${isDark ? "text-purple-400" : "text-purple-900"}`}>
-                        {(stats?.total_threats || 0).toLocaleString()}
+                        {(stats?.active_threats || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -2007,7 +2035,7 @@ export default function NIDSDashboard() {
                   </h3>
                   <div className="space-y-3">
                     {/* Recommendation 1 */}
-                    {((stats?.by_label?.["DoS"] || 0) + (stats?.by_label?.["DDoS"] || 0)) > 0 && (
+                    {((stats?.by_label_active?.["DoS"] || 0) + (stats?.by_label_active?.["DDoS"] || 0)) > 0 && (
                       <div className={`p-4 rounded-xl ${isDark ? "bg-red-900/20 border-l-4 border-red-500" : "bg-red-50 border-l-4 border-red-500"}`}>
                         <div className="flex items-start gap-3">
                           <Skull size={20} className="text-red-400 mt-0.5" />
@@ -2030,7 +2058,7 @@ export default function NIDSDashboard() {
                     )}
 
                     {/* Recommendation 2 */}
-                    {((stats?.by_label?.["Probe"] || 0) + (stats?.by_label?.["Port Scan"] || 0)) > 0 && (
+                    {((stats?.by_label_active?.["Probe"] || 0) + (stats?.by_label_active?.["Port Scan"] || 0)) > 0 && (
                       <div className={`p-4 rounded-xl ${isDark ? "bg-amber-900/20 border-l-4 border-amber-500" : "bg-amber-50 border-l-4 border-amber-500"}`}>
                         <div className="flex items-start gap-3">
                           <Radar size={20} className="text-amber-400 mt-0.5" />
@@ -2053,7 +2081,7 @@ export default function NIDSDashboard() {
                     )}
 
                     {/* Recommendation 3 */}
-                    {((stats?.by_label?.["U2R"] || 0) + (stats?.by_label?.["U2R (Root Access)"] || 0)) > 0 && (
+                    {((stats?.by_label_active?.["U2R"] || 0) + (stats?.by_label_active?.["U2R (Root Access)"] || 0)) > 0 && (
                       <div className={`p-4 rounded-xl ${isDark ? "bg-pink-900/20 border-l-4 border-pink-500" : "bg-pink-50 border-l-4 border-pink-500"}`}>
                         <div className="flex items-start gap-3">
                           <Lock size={20} className="text-pink-400 mt-0.5" />

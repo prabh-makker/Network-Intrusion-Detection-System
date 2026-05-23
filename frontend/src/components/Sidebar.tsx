@@ -19,6 +19,7 @@ import {
   Power,
   Radio,
   TrendingUp,
+  Lightbulb,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { removeToken } from "@/lib/auth";
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/alerts", label: "Threat Alerts", icon: Bell },
   { href: "/map", label: "Geo-IP Map", icon: Globe },
   { href: "/ml", label: "ML Analytics", icon: BrainCircuit },
+  { href: "/recommendations", label: "Security Advisor", icon: Lightbulb },
   { href: "/performance", label: "Performance", icon: Gauge },
   { href: "/settings", label: "System Config", icon: Settings },
 ];
