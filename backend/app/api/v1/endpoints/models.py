@@ -326,10 +326,14 @@ def predict(
         logger.warning(f"Invalid flag: {req.flag}")
         raise HTTPException(status_code=422, detail=f"flag must be one of: {list(_FLAGS.keys())}")
 
-    # Try new NSL-KDD trained model first (99.70% accuracy), fall back to ensemble
-    model  = ModelLoader.load_model("nids_xgb_nsl_kdd")
-    scaler = ModelLoader.load_scaler("nids_xgb_nsl_kdd")
+    # Use realistic NSL-KDD trained model (99.70% on realistic data)
+    # Falls back to synthetic, then ensemble if needed
+    model  = ModelLoader.load_model("nids_xgb_realistic")
+    scaler = ModelLoader.load_scaler("nids_xgb_realistic")
 
+    if model is None:
+        model  = ModelLoader.load_model("nids_xgb_nsl_kdd")
+        scaler = ModelLoader.load_scaler("nids_xgb_nsl_kdd")
     if model is None:
         model  = ModelLoader.load_model("nids_xgb_ensemble")
         scaler = ModelLoader.load_scaler("nids_xgb_ensemble_scaler")
