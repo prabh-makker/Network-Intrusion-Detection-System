@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ShieldAlert,
   LayoutDashboard,
-  Bell,
+  Activity,
   Globe,
   Sun,
   Moon,
@@ -17,7 +17,6 @@ import {
   Settings,
   Gauge,
   Power,
-  Radio,
   TrendingUp,
   Lightbulb,
 } from "lucide-react";
@@ -28,8 +27,8 @@ const NAV_ITEMS = [
   { href: "/startup", label: "System Boot", icon: Power },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
-  { href: "/connections", label: "Connections", icon: Radio },
-  { href: "/alerts", label: "Threat Alerts", icon: Bell },
+  { href: "/connections", label: "Threat Alerts", icon: ShieldAlert },
+  { href: "/alerts", label: "Live Traffic", icon: Activity },
   { href: "/map", label: "Geo-IP Map", icon: Globe },
   { href: "/ml", label: "ML Analytics", icon: BrainCircuit },
   { href: "/recommendations", label: "Security Advisor", icon: Lightbulb },

@@ -544,7 +544,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-purple-300 mb-1.5 block">Username</label>
                         <div className="relative">
                           <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                          <input type="text" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)}
+                          <input id="login-username" name="username" type="text" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-purple-500/30 focus:outline-none focus:ring-1 focus:ring-purple-500/20 transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                         </div>
@@ -553,7 +553,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-blue-300 mb-1.5 block">Password</label>
                         <div className="relative">
                           <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400" />
-                          <input type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)}
+                          <input id="login-password" name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)}
                             className="w-full pl-10 pr-10 py-3 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -587,7 +587,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-purple-300 mb-1 block">Username</label>
                         <div className="relative">
                           <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                          <input type="text" placeholder="Choose a username" value={username} onChange={(e) => setUsername(e.target.value)}
+                          <input id="signup-username" name="username" type="text" placeholder="Choose a username" value={username} onChange={(e) => setUsername(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-purple-500/30 focus:outline-none transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                         </div>
@@ -596,7 +596,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-[#c45a7a] mb-1 block">Password</label>
                         <div className="relative">
                           <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c45a7a]" />
-                          <input type={showPassword ? "text" : "password"} placeholder="Create a password" value={password} onChange={(e) => setPassword(e.target.value)}
+                          <input id="signup-password" name="password" type={showPassword ? "text" : "password"} placeholder="Create a password" value={password} onChange={(e) => setPassword(e.target.value)}
                             className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-[#9d325a]/30 focus:outline-none transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -609,7 +609,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-purple-300 mb-1 block">Security Question</label>
                         <div className="relative">
                           <HelpCircle size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                          <select value={securityQuestion} onChange={(e) => setSecurityQuestion(e.target.value)}
+                          <select id="signup-security-question" name="security_question" value={securityQuestion} onChange={(e) => setSecurityQuestion(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white border border-white/[0.06] focus:border-purple-500/30 focus:outline-none appearance-none transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }}>
                             <option value="">Select a question</option>
@@ -619,7 +619,7 @@ export default function LoginPage() {
                       </div>
                       <div className="relative">
                         <MessageSquare size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400" />
-                        <input type="text" placeholder="Your answer" value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)}
+                        <input id="signup-security-answer" name="security_answer" type="text" placeholder="Your answer" value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)}
                           className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-blue-500/30 focus:outline-none transition-all"
                           style={{ background: "rgba(255,255,255,0.03)" }} />
                       </div>
@@ -644,7 +644,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-purple-300 mb-1.5 block">Username</label>
                         <div className="relative">
                           <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                          <input type="text" placeholder="Enter your username" value={forgotUsername} onChange={(e) => setForgotUsername(e.target.value)}
+                          <input id="forgot-username" name="username" type="text" placeholder="Enter your username" value={forgotUsername} onChange={(e) => setForgotUsername(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-purple-500/30 focus:outline-none focus:ring-1 focus:ring-purple-500/20 transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                         </div>
@@ -669,7 +669,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-blue-300 mb-1.5 block">Your Answer</label>
                         <div className="relative">
                           <MessageSquare size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400" />
-                          <input type="text" placeholder="Enter your answer" value={forgotAnswer} onChange={(e) => setForgotAnswer(e.target.value)}
+                          <input id="forgot-answer" name="answer" type="text" placeholder="Enter your answer" value={forgotAnswer} onChange={(e) => setForgotAnswer(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                         </div>
@@ -678,7 +678,7 @@ export default function LoginPage() {
                         <label className="text-[10px] uppercase tracking-[0.15em] text-[#c45a7a] mb-1.5 block">New Password</label>
                         <div className="relative">
                           <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c45a7a]" />
-                          <input type={showPassword ? "text" : "password"} placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                          <input id="forgot-new-password" name="new_password" type={showPassword ? "text" : "password"} placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                             className="w-full pl-10 pr-10 py-3 rounded-xl text-sm text-white placeholder-slate-500 border border-white/[0.06] focus:border-[#9d325a]/30 focus:outline-none focus:ring-1 focus:ring-[#9d325a]/20 transition-all"
                             style={{ background: "rgba(255,255,255,0.03)" }} />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}

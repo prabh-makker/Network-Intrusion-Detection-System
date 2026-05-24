@@ -110,33 +110,63 @@ async def get_recent_alerts(
 @router.get("/stats")
 async def get_alert_stats(
     db: Session = Depends(get_db),
+    time_range: str = Query(default=None),
+    start_date: str = Query(default=None),
+    end_date: str = Query(default=None),
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Get aggregated threat statistics with blocked/active breakdown."""
-    total = db.query(func.count(ThreatLog.id)).scalar() or 0
-    blocked_count = db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True).scalar() or 0
+    """Get aggregated threat statistics with optional time filtering."""
+    from datetime import datetime, timedelta
+
+    # Build time filter
+    since = None
+    until = None
+    now = datetime.utcnow()
+
+    if time_range == "custom" and start_date and end_date:
+        try:
+            since = datetime.strptime(start_date, "%Y-%m-%d")
+            until = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        except ValueError:
+            pass
+    elif time_range == "1h":
+        since = now - timedelta(hours=1)
+    elif time_range == "6h":
+        since = now - timedelta(hours=6)
+    elif time_range == "24h":
+        since = now - timedelta(hours=24)
+    elif time_range == "7d":
+        since = now - timedelta(days=7)
+    elif time_range == "30d":
+        since = now - timedelta(days=30)
+
+    def apply_time(q):
+        if since:
+            q = q.filter(ThreatLog.timestamp >= since)
+        if until:
+            q = q.filter(ThreatLog.timestamp <= until)
+        return q
+
+    total = apply_time(db.query(func.count(ThreatLog.id))).scalar() or 0
+    blocked_count = apply_time(db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True)).scalar() or 0
     active_count = total - blocked_count
 
-    by_label = (
+    by_label = apply_time(
         db.query(ThreatLog.label, func.count(ThreatLog.id))
         .group_by(ThreatLog.label)
-        .all()
-    )
-    # Active (unblocked) counts per label — drops when SECURE NOW blocks threats
-    by_label_active = (
+    ).all()
+
+    by_label_active = apply_time(
         db.query(ThreatLog.label, func.count(ThreatLog.id))
         .filter(ThreatLog.is_blocked == False)
         .group_by(ThreatLog.label)
-        .all()
-    )
-    # Top sources — ALL threats (both blocked and active) for historical accuracy
-    top_sources = (
+    ).all()
+
+    top_sources = apply_time(
         db.query(ThreatLog.src_ip, func.count(ThreatLog.id).label("count"))
         .group_by(ThreatLog.src_ip)
         .order_by(desc("count"))
-        .limit(10)
-        .all()
-    )
+    ).limit(10).all()
 
     return {
         "total_threats": total,
@@ -236,12 +266,21 @@ async def get_threat_timeline(
             since = datetime.strptime(start_date, "%Y-%m-%d")
             until = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
             days = max(1, (until - since).days + 1)
-            delta = timedelta(days=1)
-            periods = min(days, 90)
-            label_fmt = "%b %d"
+
+            # Hourly for up to 7 days, daily beyond that
+            if days <= 7:
+                delta = timedelta(hours=1)
+                periods = days * 24
+                substr_len = 13  # "YYYY-MM-DD HH"
+                key_fmt = "%Y-%m-%d %H"
+            else:
+                delta = timedelta(days=1)
+                periods = min(days, 90)
+                substr_len = 10  # "YYYY-MM-DD"
+                key_fmt = "%Y-%m-%d"
 
             from sqlalchemy import func as sql_func, cast, String
-            group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, 10)
+            group_expr = sql_func.substr(cast(ThreatLog.timestamp, String), 1, substr_len)
             rows = (
                 db.query(group_expr.label("period"), sql_func.count(ThreatLog.id).label("threat_count"))
                 .filter(ThreatLog.timestamp >= since, ThreatLog.timestamp <= until)
@@ -257,8 +296,18 @@ async def get_threat_timeline(
             result = []
             for i in range(periods):
                 ps = since + (i * delta)
-                key = ps.strftime("%Y-%m-%d")
-                result.append({"time": ps.strftime(label_fmt), "threats": db_map.get(key, 0), "blocked": blocked_map.get(key, 0), "traffic": db_map.get(key, 0)})
+                key = ps.strftime(key_fmt)
+                # At midnight (except first point), show date as tick label
+                if days > 1 and ps.hour == 0 and i > 0:
+                    time_label = ps.strftime("%b %d")
+                else:
+                    time_label = ps.strftime("%H:00")
+                result.append({
+                    "time": time_label,
+                    "threats": db_map.get(key, 0),
+                    "blocked": blocked_map.get(key, 0),
+                    "traffic": db_map.get(key, 0),
+                })
             return result
         except ValueError:
             pass  # fall through to normal time_range handling

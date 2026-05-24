@@ -29,6 +29,7 @@ import {
   Cell,
   BarChart,
   Bar,
+  ReferenceLine,
 } from "recharts";
 import { useTheme } from "@/context/ThemeContext";
 import { getApiUrl } from "@/lib/api";
@@ -62,6 +63,7 @@ export default function AnalyticsPage() {
   const [timelineData, setTimelineData] = useState<TimelinePoint[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [authenticated, setAuthenticated] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -84,10 +86,15 @@ export default function AnalyticsPage() {
         setTimelineData(data);
       }
 
-      const statsRes = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`);
+      let statsUrl = `${apiUrl}/api/v1/alerts/stats?time_range=${timeRange}`;
+      if (timeRange === "custom" && customStart && customEnd) {
+        statsUrl = `${apiUrl}/api/v1/alerts/stats?time_range=custom&start_date=${customStart}&end_date=${customEnd}`;
+      }
+      const statsRes = await fetchWithAuth(statsUrl);
       if (statsRes.ok) {
         setStats(await statsRes.json());
       }
+      setLastRefreshed(new Date());
     } catch (e) {
       console.error("fetchAnalytics failed:", e);
     } finally {
@@ -103,7 +110,9 @@ export default function AnalyticsPage() {
   }, [authenticated, fetchTimelineData]);
 
   const pieData = stats?.by_label
-    ? Object.entries(stats.by_label).map(([name, value]) => ({ name, value: value as number }))
+    ? Object.entries(stats.by_label)
+        .map(([name, value]) => ({ name, value: value as number }))
+        .filter((d) => d.value > 0)
     : [];
 
   const totalThreats = stats?.total_threats ?? pieData.reduce((sum, item) => sum + item.value, 0);
@@ -137,11 +146,12 @@ export default function AnalyticsPage() {
             </p>
           </div>
           <button
-            onClick={fetchTimelineData}
+            type="button"
+            onClick={() => window.location.reload()}
             className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-500/30 text-cyan-400 transition-all"
-            title="Refresh"
+            title="Refresh page"
           >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={18} />
           </button>
         </div>
 
@@ -392,32 +402,42 @@ export default function AnalyticsPage() {
               Threat Distribution
             </h2>
             {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    innerRadius={50}
-                    label={(entry) => `${entry.name}: ${entry.value}`}
-                    labelLine={false}
-                  >
-                    {pieData.map((_, idx) => (
-                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? "rgba(15,10,26,0.95)" : "rgba(255,255,255,0.95)",
-                      border: `1px solid ${isDark ? "rgba(168,85,247,0.3)" : "rgba(168,85,247,0.5)"}`,
-                      borderRadius: "10px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={50}
+                    >
+                      {pieData.map((_, idx) => (
+                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? "rgba(15,10,26,0.95)" : "rgba(255,255,255,0.95)",
+                        border: `1px solid ${isDark ? "rgba(168,85,247,0.3)" : "rgba(168,85,247,0.5)"}`,
+                        borderRadius: "10px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 justify-center">
+                  {pieData.map((entry, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                      <span className={`text-xs font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                        {entry.name}: <span className="font-bold">{entry.value}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="h-[300px] flex items-center justify-center">
                 <p className={isDark ? "text-purple-300" : "text-purple-700"}>No data</p>
