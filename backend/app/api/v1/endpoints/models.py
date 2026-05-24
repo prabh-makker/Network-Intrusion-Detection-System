@@ -282,10 +282,36 @@ def predict(
     current_user=Depends(deps.get_current_active_user),
 ):
     """
-    Run inference on 12 NSL-KDD features.
+    Run inference on 12 NSL-KDD features with robust validation.
     Primary: loaded XGBoost model (nids_xgb_ensemble).
     Fallback: authoritative NSL-KDD rule-based classifier.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Validate input ranges
+    if not (0 <= req.duration <= 86400):
+        logger.warning(f"Invalid duration: {req.duration}")
+        raise HTTPException(status_code=422, detail="duration must be 0-86400 seconds")
+    if not (0 <= req.src_bytes <= 1000000):
+        logger.warning(f"Invalid src_bytes: {req.src_bytes}")
+        raise HTTPException(status_code=422, detail="src_bytes must be 0-1000000")
+    if not (0 <= req.dst_bytes <= 1000000):
+        logger.warning(f"Invalid dst_bytes: {req.dst_bytes}")
+        raise HTTPException(status_code=422, detail="dst_bytes must be 0-1000000")
+    if not (0 <= req.serror_rate <= 1.0) or not (0 <= req.rerror_rate <= 1.0) or not (0 <= req.same_srv_rate <= 1.0) or not (0 <= req.diff_srv_rate <= 1.0):
+        logger.warning(f"Invalid rate values: se={req.serror_rate}, re={req.rerror_rate}, ss={req.same_srv_rate}, ds={req.diff_srv_rate}")
+        raise HTTPException(status_code=422, detail="Rate fields must be 0.0-1.0")
+    if req.protocol_type.lower() not in _PROTOCOLS and req.protocol_type.lower() != "other":
+        logger.warning(f"Invalid protocol_type: {req.protocol_type}")
+        raise HTTPException(status_code=422, detail=f"protocol_type must be one of: {list(_PROTOCOLS.keys())}")
+    if req.service.lower() not in _SERVICES and req.service.lower() != "other":
+        logger.warning(f"Invalid service: {req.service}")
+        raise HTTPException(status_code=422, detail=f"service must be one of: {list(_SERVICES.keys())}")
+    if req.flag.upper() not in _FLAGS and req.flag.upper() != "OTHER":
+        logger.warning(f"Invalid flag: {req.flag}")
+        raise HTTPException(status_code=422, detail=f"flag must be one of: {list(_FLAGS.keys())}")
+
     model  = ModelLoader.load_model("nids_xgb_ensemble")
     scaler = ModelLoader.load_scaler("nids_xgb_ensemble_scaler")
 
@@ -328,12 +354,15 @@ def predict(
                 confidence = 88.0
                 probs_map  = {cls: (0.88 if cls == label else 0.03) for cls in _NSL_CLASSES}
 
+            logger.info(f"[PREDICT] Model inference: {label} ({confidence}% confidence) - src={req.src_bytes}, dst={req.dst_bytes}, serr={req.serror_rate}")
             return {"label": label, "confidence": confidence, "probabilities": probs_map, "source": "model"}
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"[PREDICT] Model inference failed: {str(e)}, falling back to rules")
             pass  # Fall through to rule-based
 
     # ── Authoritative rule-based fallback (always available)
     result = _nsl_kdd_rules(req)
     result["source"] = "rules"
+    logger.info(f"[PREDICT] Rule-based inference: {result['label']} ({result['confidence']}% confidence) - from={req.flag}, serr={req.serror_rate}, diff_srv={req.diff_srv_rate}")
     return result

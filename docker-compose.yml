@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ========================================================
   # NIDS Backend API (FastAPI + XGBoost)

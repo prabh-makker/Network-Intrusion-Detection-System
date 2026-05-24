@@ -757,12 +757,25 @@ export default function MLAnalyticsPage() {
                   </div>
                 </div>
               ) : simLoading ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
-                    <BrainCircuit size={48} className="text-purple-400" />
-                  </motion.div>
-                  <p className="mt-5 text-purple-300 font-semibold text-lg">XGBoost model analyzing packet…</p>
-                  <p className={`text-sm mt-1.5 ${isDark ? "text-purple-500" : "text-purple-500"}`}>Running 300 decision trees</p>
+                <div className="flex-1 flex flex-col justify-between py-6">
+                  <div className="flex items-center justify-center gap-3">
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
+                      <BrainCircuit size={40} className="text-purple-400" />
+                    </motion.div>
+                    <div>
+                      <p className="text-purple-300 font-semibold">Analyzing threat pattern…</p>
+                      <p className={`text-xs mt-0.5 ${isDark ? "text-purple-500" : "text-purple-600"}`}>Running inference model</p>
+                    </div>
+                  </div>
+                  {/* Skeleton loader preview */}
+                  <div className="space-y-4 mt-6">
+                    <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }}
+                      className={`h-20 rounded-2xl ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
+                    <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2, delay: 0.1 }}
+                      className={`h-32 rounded-xl ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
+                    <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2, delay: 0.2 }}
+                      className={`h-24 rounded-lg ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
+                  </div>
                 </div>
               ) : simResult ? (
                 <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 space-y-5">
@@ -824,13 +837,22 @@ export default function MLAnalyticsPage() {
                         {Object.entries(metrics.model.feature_importances)
                           .sort(([, a], [, b]) => (b as number) - (a as number))
                           .slice(0, 6)
-                          .map(([feat, importance]) => (
-                            <div key={feat} className={`rounded-lg p-3 ${isDark ? "bg-white/8 border border-white/15" : "bg-slate-50 border border-slate-200"}`}>
-                              <p className={`text-[11px] font-mono font-bold truncate ${isDark ? "text-slate-300" : "text-slate-600"}`}>{feat}</p>
-                              <p className={`text-base font-black truncate mt-1 ${isDark ? "text-white" : "text-slate-900"}`}>{simInputs[feat] ?? "—"}</p>
-                              <p className={`text-[11px] font-bold mt-0.5 ${isDark ? "text-purple-300" : "text-purple-600"}`}>{((importance as number) * 100).toFixed(1)}% weight</p>
-                            </div>
-                          ))}
+                          .map(([feat, importance]) => {
+                            const desc = metrics.model.feature_descriptions?.[feat] || "Network feature for threat classification";
+                            return (
+                              <div key={feat}
+                                className={`rounded-lg p-3 cursor-help transition-all group relative ${isDark ? "bg-white/8 border border-white/15 hover:bg-white/12 hover:border-white/25" : "bg-slate-50 border border-slate-200 hover:bg-slate-100"}`}
+                                title={desc}>
+                                <p className={`text-[11px] font-mono font-bold truncate ${isDark ? "text-slate-300" : "text-slate-600"}`}>{feat}</p>
+                                <p className={`text-base font-black truncate mt-1 ${isDark ? "text-white" : "text-slate-900"}`}>{simInputs[feat] ?? "—"}</p>
+                                <p className={`text-[11px] font-bold mt-0.5 ${isDark ? "text-purple-300" : "text-purple-600"}`}>{((importance as number) * 100).toFixed(1)}% weight</p>
+                                {/* Tooltip on hover */}
+                                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 ${isDark ? "bg-slate-900 text-slate-200 border border-slate-700" : "bg-slate-800 text-white border border-slate-600"}`}>
+                                  {desc}
+                                </div>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
