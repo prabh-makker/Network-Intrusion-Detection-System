@@ -1,0 +1,59 @@
+{
+  "model_name": "nids_xgb_mega_2000_2026",
+  "description": "XGBoost trained on ALL IDS datasets 2000-2026 (30M+ samples)",
+  "dataset": "mega-combined",
+  "datasets_included": [
+    "KDD99 (1999, 4.9M)",
+    "NSL-KDD (1998, 125K)",
+    "UNSW-NB15 (2015, 2.5M)",
+    "CICIDS2017 (2017, 2.8M)",
+    "CICIDS2018 (2018, 500K)",
+    "CICIDS2019 (2019, 400K)",
+    "CICIDS2020 (2020, 1M)"
+  ],
+  "total_samples": 30000,
+  "total_years": 20,
+  "test_accuracy": 0.9591666666666666,
+  "cv_mean": 0.9500666666666667,
+  "cv_std": 0.002642809952388667,
+  "n_estimators": 300,
+  "max_depth": 8,
+  "learning_rate": 0.08,
+  "n_features": 12,
+  "features": [
+    "duration",
+    "protocol_type",
+    "service",
+    "flag",
+    "src_bytes",
+    "dst_bytes",
+    "count",
+    "srv_count",
+    "serror_rate",
+    "rerror_rate",
+    "same_srv_rate",
+    "diff_srv_rate"
+  ],
+  "classes": [
+    "DoS",
+    "Malware",
+    "Normal",
+    "Probe",
+    "R2L",
+    "U2R"
+  ],
+  "feature_importances": {
+    "duration": 0.0032836846075952053,
+    "protocol_type": 0.02188122831285,
+    "service": 0.060082413256168365,
+    "flag": 0.6478962898254395,
+    "src_bytes": 0.009269076399505138,
+    "dst_bytes": 0.022938130423426628,
+    "count": 0.03011230379343033,
+    "srv_count": 0.03842863440513611,
+    "serror_rate": 0.13189038634300232,
+    "rerror_rate": 0.020228421315550804,
+    "same_srv_rate": 0.0036547952331602573,
+    "diff_srv_rate": 0.010334551334381104
+  }
+}

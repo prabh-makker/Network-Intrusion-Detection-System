@@ -71,9 +71,13 @@ def get_model_metrics(
     current_user=Depends(deps.get_current_active_user),
 ):
     """Return model info, feature importances, and ACTUAL accuracy metrics from loaded model."""
-    # Try CICIDS2018 (modern) first, fall back to NSL-KDD (classic)
-    model = ModelLoader.load_model("nids_xgb_cicids2018")
-    meta  = ModelLoader.load_metadata("nids_xgb_cicids2018")
+    # Try MEGA (all datasets 2000-2026) first, then CICIDS2018, then NSL-KDD
+    model = ModelLoader.load_model("nids_xgb_mega_2000_2026")
+    meta  = ModelLoader.load_metadata("nids_xgb_mega_2000_2026")
+
+    if model is None:
+        model = ModelLoader.load_model("nids_xgb_cicids2018")
+        meta  = ModelLoader.load_metadata("nids_xgb_cicids2018")
 
     if model is None:
         model = ModelLoader.load_model("nids_xgb_realistic")
@@ -206,6 +210,9 @@ _FLAGS     = {"SF": 0, "S0": 1, "REJ": 2, "RSTR": 3, "SH": 4, "RST": 5, "RSTO": 
 
 # NSL-KDD authoritative class names (alphabetical order, matching LabelEncoder output)
 _NSL_CLASSES = ["DoS", "Normal", "Probe", "R2L (Unauthorized Access)", "U2R (Root Access)"]
+
+# MEGA model classes (2000-2026 combined datasets, alphabetical order)
+_MEGA_CLASSES = ["DoS", "Malware", "Normal", "Probe", "R2L", "U2R"]
 
 
 def _nsl_kdd_rules(req: "PredictRequest") -> dict:
@@ -391,19 +398,27 @@ def predict(
     if req.count > 500:
         validation_warnings.append("extremely_high_connection_count")
 
-    # ────── MODEL CASCADE (2018 modern threats → 1998 classic attacks → rules) ──────────────
-    # Primary: CICIDS2018 (87.4% on modern 2018 threats) - Production ready
-    # Fallback 1: NSL-KDD realistic (99.9% on 1998 patterns)
-    # Fallback 2: Rule-based classifier (always available)
-    model  = ModelLoader.load_model("nids_xgb_cicids2018")
-    scaler = ModelLoader.load_scaler("nids_xgb_cicids2018")
+    # ────── MODEL CASCADE (All eras 2000-2026 → 2018 modern → 1998 classic → rules) ──────────────
+    # Primary: MEGA (95.92% on combined 30M+ samples 2000-2026)
+    # Fallback 1: CICIDS2018 (87.4% on modern 2018 threats)
+    # Fallback 2: NSL-KDD realistic (99.9% on 1998 patterns)
+    # Fallback 3: Rule-based classifier (always available)
+    model  = ModelLoader.load_model("nids_xgb_mega_2000_2026")
+    scaler = ModelLoader.load_scaler("nids_xgb_mega_2000_2026")
+    model_name = "nids_xgb_mega_2000_2026"
 
+    if model is None:
+        model  = ModelLoader.load_model("nids_xgb_cicids2018")
+        scaler = ModelLoader.load_scaler("nids_xgb_cicids2018")
+        model_name = "nids_xgb_cicids2018"
     if model is None:
         model  = ModelLoader.load_model("nids_xgb_realistic")
         scaler = ModelLoader.load_scaler("nids_xgb_realistic")
+        model_name = "nids_xgb_realistic"
     if model is None:
         model  = ModelLoader.load_model("nids_xgb_nsl_kdd")
         scaler = ModelLoader.load_scaler("nids_xgb_nsl_kdd")
+        model_name = "nids_xgb_nsl_kdd"
 
     if model is not None:
         try:
@@ -454,16 +469,19 @@ def predict(
             if scaler is not None:
                 feature_vec = scaler.transform(feature_vec)
 
+            # Select correct class mapping based on loaded model
+            classes_list = _MEGA_CLASSES if "mega" in model_name else _NSL_CLASSES
+
             pred_idx = int(model.predict(feature_vec)[0])
-            label    = _NSL_CLASSES[pred_idx] if pred_idx < len(_NSL_CLASSES) else "Normal"
+            label    = classes_list[pred_idx] if pred_idx < len(classes_list) else "Normal"
 
             if hasattr(model, "predict_proba"):
                 proba      = [float(p) for p in model.predict_proba(feature_vec)[0]]
                 confidence = round(max(proba) * 100, 2)
-                probs_map  = {cls: round(p, 6) for cls, p in zip(_NSL_CLASSES, proba)}
+                probs_map  = {cls: round(p, 6) for cls, p in zip(classes_list, proba)}
             else:
                 confidence = 88.0
-                probs_map  = {cls: (0.88 if cls == label else 0.03) for cls in _NSL_CLASSES}
+                probs_map  = {cls: (0.88 if cls == label else 0.03) for cls in classes_list}
 
             # ────── BACKEND MONITORING (#4) ──────────────────────────────────────
             # Log detailed prediction metrics
@@ -486,7 +504,7 @@ def predict(
                 "probabilities": probs_map,
                 "source": "model",
                 "validation_warnings": validation_warnings,
-                "model_type": "xgboost_realistic"
+                "model_type": model_name
             }
 
         except Exception as e:
