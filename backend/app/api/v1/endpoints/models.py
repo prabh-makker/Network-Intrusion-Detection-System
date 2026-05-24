@@ -301,35 +301,92 @@ def predict(
     current_user=Depends(deps.get_current_active_user),
 ):
     """
-    Run inference on 12 NSL-KDD features with robust validation.
-    Primary: loaded XGBoost model (nids_xgb_ensemble).
-    Fallback: authoritative NSL-KDD rule-based classifier.
+    Run inference on 12 NSL-KDD features with comprehensive validation and monitoring.
+
+    FEATURE VALIDATION (#3):
+    - Strict range checking for all numeric fields
+    - Enum validation for categorical fields
+    - Warning flags for anomalous values
+
+    BACKEND MONITORING (#4):
+    - Detailed logging of all predictions
+    - Performance metrics tracking
+    - Fallback reasons logged
     """
     import logging
     logger = logging.getLogger(__name__)
 
-    # Validate input ranges
+    # ────── FEATURE VALIDATION (#3) ──────────────────────────────────────
+
+    validation_warnings = []
+
+    # Duration validation (0-86400 seconds = 0-24 hours)
     if not (0 <= req.duration <= 86400):
-        logger.warning(f"Invalid duration: {req.duration}")
+        logger.error(f"[VALIDATION] Invalid duration: {req.duration}")
         raise HTTPException(status_code=422, detail="duration must be 0-86400 seconds")
+    if req.duration > 3600:
+        validation_warnings.append("duration_unusually_long")
+    if req.duration == 0:
+        validation_warnings.append("duration_zero")
+
+    # Bytes validation (0-1,000,000)
     if not (0 <= req.src_bytes <= 1000000):
-        logger.warning(f"Invalid src_bytes: {req.src_bytes}")
+        logger.error(f"[VALIDATION] Invalid src_bytes: {req.src_bytes}")
         raise HTTPException(status_code=422, detail="src_bytes must be 0-1000000")
     if not (0 <= req.dst_bytes <= 1000000):
-        logger.warning(f"Invalid dst_bytes: {req.dst_bytes}")
+        logger.error(f"[VALIDATION] Invalid dst_bytes: {req.dst_bytes}")
         raise HTTPException(status_code=422, detail="dst_bytes must be 0-1000000")
-    if not (0 <= req.serror_rate <= 1.0) or not (0 <= req.rerror_rate <= 1.0) or not (0 <= req.same_srv_rate <= 1.0) or not (0 <= req.diff_srv_rate <= 1.0):
-        logger.warning(f"Invalid rate values: se={req.serror_rate}, re={req.rerror_rate}, ss={req.same_srv_rate}, ds={req.diff_srv_rate}")
-        raise HTTPException(status_code=422, detail="Rate fields must be 0.0-1.0")
+
+    # Warn on asymmetric traffic
+    if req.src_bytes > 100000 and req.dst_bytes < 1000:
+        validation_warnings.append("asymmetric_upload_heavy")
+    if req.dst_bytes > 100000 and req.src_bytes < 1000:
+        validation_warnings.append("asymmetric_download_heavy")
+
+    # Rate validation (0.0-1.0)
+    if not (0 <= req.serror_rate <= 1.0):
+        logger.error(f"[VALIDATION] Invalid serror_rate: {req.serror_rate}")
+        raise HTTPException(status_code=422, detail="serror_rate must be 0.0-1.0")
+    if not (0 <= req.rerror_rate <= 1.0):
+        logger.error(f"[VALIDATION] Invalid rerror_rate: {req.rerror_rate}")
+        raise HTTPException(status_code=422, detail="rerror_rate must be 0.0-1.0")
+    if not (0 <= req.same_srv_rate <= 1.0):
+        logger.error(f"[VALIDATION] Invalid same_srv_rate: {req.same_srv_rate}")
+        raise HTTPException(status_code=422, detail="same_srv_rate must be 0.0-1.0")
+    if not (0 <= req.diff_srv_rate <= 1.0):
+        logger.error(f"[VALIDATION] Invalid diff_srv_rate: {req.diff_srv_rate}")
+        raise HTTPException(status_code=422, detail="diff_srv_rate must be 0.0-1.0")
+
+    # Warn on high error rates (DoS signature)
+    if req.serror_rate > 0.5:
+        validation_warnings.append("high_syn_error_rate")
+    if req.rerror_rate > 0.5:
+        validation_warnings.append("high_reject_rate")
+
+    # Enum validation
     if req.protocol_type.lower() not in _PROTOCOLS and req.protocol_type.lower() != "other":
-        logger.warning(f"Invalid protocol_type: {req.protocol_type}")
+        logger.error(f"[VALIDATION] Invalid protocol_type: {req.protocol_type}")
         raise HTTPException(status_code=422, detail=f"protocol_type must be one of: {list(_PROTOCOLS.keys())}")
+
     if req.service.lower() not in _SERVICES and req.service.lower() != "other":
-        logger.warning(f"Invalid service: {req.service}")
+        logger.error(f"[VALIDATION] Invalid service: {req.service}")
         raise HTTPException(status_code=422, detail=f"service must be one of: {list(_SERVICES.keys())}")
+
     if req.flag.upper() not in _FLAGS and req.flag.upper() != "OTHER":
-        logger.warning(f"Invalid flag: {req.flag}")
+        logger.error(f"[VALIDATION] Invalid flag: {req.flag}")
         raise HTTPException(status_code=422, detail=f"flag must be one of: {list(_FLAGS.keys())}")
+
+    # Warn on suspicious flags
+    if req.flag.upper() == "S0":
+        validation_warnings.append("syn_flood_flag")
+    if req.flag.upper() in ["REJ", "RSTR"]:
+        validation_warnings.append("connection_rejected")
+
+    # Count validation
+    if req.count < 1 or req.srv_count < 1:
+        validation_warnings.append("zero_connection_count")
+    if req.count > 500:
+        validation_warnings.append("extremely_high_connection_count")
 
     # Use realistic NSL-KDD trained model (99.70% on realistic data)
     # Falls back to synthetic, then ensemble if needed
@@ -403,15 +460,49 @@ def predict(
                 confidence = 88.0
                 probs_map  = {cls: (0.88 if cls == label else 0.03) for cls in _NSL_CLASSES}
 
-            logger.info(f"[PREDICT] Model inference: {label} ({confidence}% confidence) - src={req.src_bytes}, dst={req.dst_bytes}, serr={req.serror_rate}")
-            return {"label": label, "confidence": confidence, "probabilities": probs_map, "source": "model"}
+            # ────── BACKEND MONITORING (#4) ──────────────────────────────────────
+            # Log detailed prediction metrics
+            logger.info(
+                f"[PREDICT] Model inference SUCCESS | "
+                f"class={label} | confidence={confidence}% | "
+                f"proto={req.protocol_type} | service={req.service} | flag={req.flag} | "
+                f"src_bytes={req.src_bytes} | dst_bytes={req.dst_bytes} | "
+                f"count={req.count} | serror_rate={req.serror_rate:.3f} | "
+                f"warnings={len(validation_warnings)}"
+            )
+
+            # Log validation warnings if any
+            if validation_warnings:
+                logger.warning(f"[PREDICT] Validation warnings: {', '.join(validation_warnings)}")
+
+            return {
+                "label": label,
+                "confidence": confidence,
+                "probabilities": probs_map,
+                "source": "model",
+                "validation_warnings": validation_warnings,
+                "model_type": "xgboost_realistic"
+            }
 
         except Exception as e:
-            logger.warning(f"[PREDICT] Model inference failed: {str(e)}, falling back to rules")
+            logger.error(f"[PREDICT] Model inference FAILED: {str(e)} | Falling back to rule-based classifier")
             pass  # Fall through to rule-based
 
-    # ── Authoritative rule-based fallback (always available)
+    # ────── BACKEND MONITORING (#4) - FALLBACK PATH ──────────────────────────────────────
+    # Authoritative rule-based fallback (always available)
     result = _nsl_kdd_rules(req)
     result["source"] = "rules"
-    logger.info(f"[PREDICT] Rule-based inference: {result['label']} ({result['confidence']}% confidence) - from={req.flag}, serr={req.serror_rate}, diff_srv={req.diff_srv_rate}")
+    result["validation_warnings"] = validation_warnings
+    result["model_type"] = "rule_based_fallback"
+
+    logger.info(
+        f"[PREDICT] Rule-based inference FALLBACK | "
+        f"class={result['label']} | confidence={result['confidence']}% | "
+        f"flag={req.flag} | serror_rate={req.serror_rate:.3f} | "
+        f"diff_srv_rate={req.diff_srv_rate:.3f}"
+    )
+
+    if validation_warnings:
+        logger.warning(f"[PREDICT] FALLBACK - Validation warnings: {', '.join(validation_warnings)}")
+
     return result
