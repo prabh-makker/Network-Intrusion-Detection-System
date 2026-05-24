@@ -1,36 +1,26 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Activity,
-  Wifi,
-  TrendingUp,
   AlertTriangle,
   Ban,
   Clock,
-  ShieldCheck,
-  Zap,
   Globe,
+  ShieldCheck,
+  Wifi,
+  Zap,
+  Terminal,
+  TrendingUp,
+  Radio,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { fetchWithAuth, getToken } from "@/lib/auth";
 import { getApiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
+// ── Types ────────────────────────────────────────────────────────────────────
 type Stats = {
   total_threats: number;
   active_threats?: number;
@@ -40,7 +30,7 @@ type Stats = {
   top_sources: { ip: string; count: number }[];
 };
 
-type RecentAlert = {
+type LiveAlert = {
   id: string;
   timestamp: string;
   src_ip: string;
@@ -51,18 +41,9 @@ type RecentAlert = {
   is_blocked: boolean;
 };
 
-type TimePoint = {
-  time: string;
-  active: number;
-  blocked: number;
-};
+type RateTick = { t: number; count: number }; // epoch ms + alert count at that tick
 
-const CHART_COLORS = [
-  "#a855f7", "#06b6d4", "#ec4899", "#f59e0b",
-  "#ef4444", "#10b981", "#f97316", "#3b82f6",
-  "#84cc16", "#8b5cf6",
-];
-
+// ── Constants ────────────────────────────────────────────────────────────────
 const THREAT_COLORS: Record<string, string> = {
   DoS: "#06b6d4",
   DDoS: "#a855f7",
@@ -70,44 +51,50 @@ const THREAT_COLORS: Record<string, string> = {
   Probe: "#f59e0b",
   "U2R (Root Access)": "#ef4444",
   "R2L (Unauthorized Access)": "#f97316",
+  Malware: "#ef4444",
+  "Brute Force": "#f59e0b",
+  "Port Scan": "#14b8a6",
+  "SQL Injection": "#8b5cf6",
 };
 
-function KpiCard({
-  icon,
-  label,
-  value,
-  sub,
-  color,
-  isDark,
-  delay = 0,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  sub?: string;
-  color: string;
-  isDark: boolean;
-  delay?: number;
-}) {
+const LABEL_EMOJI: Record<string, string> = {
+  DDoS: "💥", "DDoS (Ping of Death)": "💀", DoS: "⚡",
+  Probe: "📡", "U2R (Root Access)": "👑", "R2L (Unauthorized Access)": "🚪",
+  Malware: "🦠", "Brute Force": "🔓", "Port Scan": "🔍", "SQL Injection": "💉",
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function relTime(ts: string) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return new Date(ts).toLocaleTimeString();
+}
+
+function ProtocolBar({
+  name, count, max, isDark,
+}: { name: string; count: number; max: number; isDark: boolean }) {
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="p-5 rounded-2xl border backdrop-blur-xl"
-      style={{ borderColor: color + "50", background: color + "12" }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div style={{ color }}>{icon}</div>
-        <span className="text-xs font-mono font-bold opacity-60" style={{ color }}>LIVE</span>
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className={`font-mono font-semibold ${isDark ? "text-cyan-300" : "text-cyan-700"}`}>{name}</span>
+        <span className={isDark ? "text-white" : "text-gray-900"}>{count} <span className="opacity-50">({pct}%)</span></span>
       </div>
-      <p className={`text-3xl font-black tabular-nums ${isDark ? "text-white" : "text-gray-900"}`}>{value}</p>
-      <p className={`text-xs font-semibold mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{label}</p>
-      {sub && <p className="text-xs mt-0.5 opacity-70" style={{ color }}>{sub}</p>}
-    </motion.div>
+      <div className={`h-2 rounded-full overflow-hidden ${isDark ? "bg-purple-900/40" : "bg-purple-100"}`}>
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+      </div>
+    </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 export default function LiveTrafficPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -115,9 +102,11 @@ export default function LiveTrafficPage() {
   const apiUrl = getApiUrl();
 
   const [stats, setStats] = useState<Stats>({ total_threats: 0, by_label: {}, top_sources: [] });
-  const [recentAlerts, setRecentAlerts] = useState<RecentAlert[]>([]);
-  const [timeSeries, setTimeSeries] = useState<TimePoint[]>([]);
+  const [liveLog, setLiveLog] = useState<LiveAlert[]>([]);   // scrolling event log
+  const [rateTicks, setRateTicks] = useState<RateTick[]>([]); // for alerts/min calc
   const [authenticated, setAuthenticated] = useState(false);
+  const logRef = useRef<HTMLDivElement>(null);
+  const prevAlertIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -128,36 +117,37 @@ export default function LiveTrafficPage() {
     try {
       const [statsRes, recentRes] = await Promise.all([
         fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`),
-        fetchWithAuth(`${apiUrl}/api/v1/alerts/recent?limit=20`),
+        fetchWithAuth(`${apiUrl}/api/v1/alerts/recent?limit=50`),
       ]);
 
-      let newStats: Stats = { total_threats: 0, by_label: {}, top_sources: [] };
-      if (statsRes.ok) {
-        newStats = await statsRes.json();
-        setStats(newStats);
-      }
-      if (recentRes.ok) {
-        const data = await recentRes.json();
-        setRecentAlerts(data);
-      }
+      if (statsRes.ok) setStats(await statsRes.json());
 
-      // Rolling time series — one point per 5s fetch
-      const timeLabel = new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-      setTimeSeries((prev) => {
-        const next: TimePoint = {
-          time: timeLabel,
-          active: newStats.active_threats ?? 0,
-          blocked: newStats.blocked_threats ?? 0,
-        };
-        const updated = [...prev, next];
-        return updated.length > 24 ? updated.slice(updated.length - 24) : updated;
-      });
+      if (recentRes.ok) {
+        const fresh: LiveAlert[] = await recentRes.json();
+
+        // Find truly new alerts (not seen before)
+        const newOnes = fresh.filter((a) => !prevAlertIds.current.has(a.id));
+        newOnes.forEach((a) => prevAlertIds.current.add(a.id));
+
+        // Keep full sorted log (newest first), capped at 80
+        setLiveLog((prev) => {
+          const combined = [...newOnes, ...prev];
+          const seen = new Set<string>();
+          return combined
+            .filter((a) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
+            .slice(0, 80);
+        });
+
+        // Rate tick: record how many NEW alerts arrived this poll
+        const now = Date.now();
+        setRateTicks((prev) => {
+          const updated = [...prev, { t: now, count: newOnes.length }];
+          // Keep last 60 seconds of ticks
+          return updated.filter((tk) => now - tk.t < 60_000);
+        });
+      }
     } catch (e) {
-      console.error("LiveTraffic fetchData failed:", e);
+      console.error("LiveTraffic fetch failed:", e);
     }
   }, [apiUrl]);
 
@@ -168,32 +158,27 @@ export default function LiveTrafficPage() {
     return () => clearInterval(interval);
   }, [authenticated, fetchData]);
 
-  // Derived data
-  const pieData = Object.entries(stats.by_label)
-    .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
+  // Alerts per minute: sum of all ticks in last 60s
+  const alertsPerMin = rateTicks.reduce((sum, tk) => sum + tk.count, 0);
 
-  const topSources = stats.top_sources.slice(0, 7);
-
+  // Protocol breakdown from live log
   const protocolMap: Record<string, number> = {};
-  recentAlerts.forEach((a) => {
-    protocolMap[a.protocol] = (protocolMap[a.protocol] || 0) + 1;
-  });
-  const protocolData = Object.entries(protocolMap)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
+  liveLog.forEach((a) => { protocolMap[a.protocol] = (protocolMap[a.protocol] || 0) + 1; });
+  const protocols = Object.entries(protocolMap).sort((a, b) => b[1] - a[1]);
+  const maxProto = protocols[0]?.[1] ?? 1;
 
-  const axisColor = isDark ? "#ffffff35" : "#00000035";
-  const tooltipStyle = {
-    background: isDark ? "#1a1a3e" : "#fff",
-    border: isDark ? "1px solid #a78bfa40" : "1px solid #8b5cf620",
-    borderRadius: 10,
-    color: isDark ? "#e9d5ff" : "#3b0764",
-    fontSize: 12,
-  };
+  // Per-label active counts
+  const labelActive = stats.by_label_active ?? {};
 
-  const panelClass = `rounded-2xl border backdrop-blur-xl p-6 ${
+  // Threat severity rating
+  const securityScore = stats.total_threats > 0
+    ? Math.max(0, 100 - Math.round(((stats.active_threats ?? 0) / stats.total_threats) * 100))
+    : 100;
+
+  const scoreColor = securityScore >= 80 ? "#10b981" : securityScore >= 50 ? "#f59e0b" : "#ef4444";
+  const scoreLabel = securityScore >= 80 ? "SECURE" : securityScore >= 50 ? "MODERATE" : "AT RISK";
+
+  const panelClass = `rounded-2xl border backdrop-blur-xl ${
     isDark
       ? "border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10"
       : "border-purple-300/40 bg-white shadow-md"
@@ -201,357 +186,269 @@ export default function LiveTrafficPage() {
 
   return (
     <div className={`min-h-screen w-full flex flex-col ${isDark ? "bg-[#0d0d1f]" : "bg-transparent"}`}>
-      {/* Header */}
-      <div
-        className={`border-b backdrop-blur-xl px-6 py-6 ${
-          isDark
-            ? "border-cyan-500/20 bg-gradient-to-r from-cyan-900/10 via-transparent to-blue-900/10"
-            : "border-cyan-400/20 bg-cyan-950/5"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className={`border-b backdrop-blur-xl px-6 py-5 ${isDark ? "border-cyan-500/20 bg-gradient-to-r from-cyan-900/10 via-transparent to-blue-900/10" : "border-cyan-400/20 bg-cyan-950/5"}`}>
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-4 flex-wrap">
           <div>
             <motion.h1
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 flex items-center gap-3"
             >
-              <Activity size={32} className="text-cyan-400" />
+              <Radio size={30} className="text-cyan-400" />
               Live Traffic
             </motion.h1>
-            <p className={`mt-2 text-sm ${isDark ? "text-cyan-200" : "text-cyan-800"}`}>
-              Real-time network traffic dashboard · Auto-updates every 5s
+            <p className={`mt-1 text-sm ${isDark ? "text-cyan-200" : "text-cyan-800"}`}>
+              Real-time SOC operations view · Polls every 5s · No historical aggregation
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-            </span>
-            <span className={`text-sm font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
-              LIVE
-            </span>
+
+          {/* Live pulse + rate */}
+          <div className="flex items-center gap-4">
+            <div className={`px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 ${isDark ? "border-red-500/30 bg-red-900/20 text-red-300" : "border-red-400/30 bg-red-50 text-red-700"}`}>
+              <Zap size={15} />
+              {alertsPerMin} alerts/min
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
+              <span className={`text-sm font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>LIVE</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Body */}
+      {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div className="flex-1 px-6 py-6 w-full overflow-auto">
-        <div className="max-w-7xl mx-auto w-full space-y-6">
+        <div className="max-w-7xl mx-auto w-full space-y-5">
 
-          {/* KPI Row */}
+          {/* ── KPI Row ─────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard
-              icon={<Wifi size={22} />}
-              label="Total Threats"
-              value={stats.total_threats.toLocaleString()}
-              color="#a855f7"
-              isDark={isDark}
-              delay={0}
-            />
-            <KpiCard
-              icon={<AlertTriangle size={22} />}
-              label="Active Threats"
-              value={(stats.active_threats ?? 0).toLocaleString()}
-              sub="currently unblocked"
-              color="#ef4444"
-              isDark={isDark}
-              delay={0.05}
-            />
-            <KpiCard
-              icon={<Ban size={22} />}
-              label="Quarantined"
-              value={(stats.blocked_threats ?? 0).toLocaleString()}
-              sub="IPs blocked"
-              color="#10b981"
-              isDark={isDark}
-              delay={0.1}
-            />
-            <KpiCard
-              icon={<TrendingUp size={22} />}
-              label="Threat Types"
-              value={Object.keys(stats.by_label).length}
-              sub="distinct categories"
-              color="#06b6d4"
-              isDark={isDark}
-              delay={0.15}
-            />
+            {/* Security Score */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+              className={`${panelClass} p-5`}
+            >
+              <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Network Status</p>
+              <div className="flex items-end gap-2">
+                <p className="text-4xl font-black" style={{ color: scoreColor }}>{securityScore}</p>
+                <p className="text-sm font-bold mb-1" style={{ color: scoreColor }}>/100</p>
+              </div>
+              <p className="text-xs font-bold mt-1" style={{ color: scoreColor }}>{scoreLabel}</p>
+            </motion.div>
+
+            {/* Active threats */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className={`${panelClass} p-5`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <AlertTriangle size={18} className="text-red-400" />
+                <span className="text-xs font-mono text-red-400">ACTIVE</span>
+              </div>
+              <p className={`text-4xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>{stats.active_threats ?? 0}</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-red-300" : "text-red-600"}`}>unblocked threats</p>
+            </motion.div>
+
+            {/* Blocked */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className={`${panelClass} p-5`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Ban size={18} className="text-emerald-400" />
+                <span className="text-xs font-mono text-emerald-400">BLOCKED</span>
+              </div>
+              <p className={`text-4xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>{stats.blocked_threats ?? 0}</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-emerald-300" : "text-emerald-600"}`}>IPs quarantined</p>
+            </motion.div>
+
+            {/* Unique attackers */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className={`${panelClass} p-5`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Globe size={18} className="text-purple-400" />
+                <span className="text-xs font-mono text-purple-400">ATTACKERS</span>
+              </div>
+              <p className={`text-4xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>{stats.top_sources.length}</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-purple-300" : "text-purple-600"}`}>unique source IPs</p>
+            </motion.div>
           </div>
 
-          {/* Live Threat Activity Line Chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className={panelClass}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h3 className={`text-lg font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
-                <Activity size={20} className="text-cyan-400" />
-                Live Threat Activity
-              </h3>
-              <span className={`text-xs ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                rolling 24 snapshots · 5s interval
-              </span>
-            </div>
-            {timeSeries.length < 2 ? (
+          {/* ── Main 2-column layout ─────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            {/* Live Event Log — 2/3 */}
+            <div className={`lg:col-span-2 ${panelClass} p-5 flex flex-col`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}>
+                  <Terminal size={18} className="text-cyan-400" />
+                  Live Event Log
+                </h3>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                  </span>
+                  <span className={isDark ? "text-red-300" : "text-red-600"}>{liveLog.length} events</span>
+                </div>
+              </div>
+
+              {/* Terminal-style log */}
               <div
-                className={`flex items-center justify-center h-52 rounded-xl border border-dashed ${
-                  isDark ? "border-purple-500/20 text-purple-400" : "border-purple-300 text-purple-500"
+                ref={logRef}
+                className={`flex-1 overflow-y-auto rounded-xl font-mono text-xs space-y-0.5 p-3 max-h-[480px] ${
+                  isDark ? "bg-black/40 border border-green-900/30" : "bg-gray-50 border border-gray-200"
                 }`}
               >
-                <div className="text-center">
-                  <Activity size={32} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Collecting data — first point in ~5s…</p>
-                </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={timeSeries} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <XAxis
-                    dataKey="time"
-                    tick={{ fill: axisColor, fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fill: axisColor, fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Line
-                    type="monotone"
-                    dataKey="active"
-                    stroke="#ef4444"
-                    strokeWidth={2.5}
-                    dot={false}
-                    name="Active Threats"
-                    activeDot={{ r: 4, fill: "#ef4444" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="blocked"
-                    stroke="#10b981"
-                    strokeWidth={2.5}
-                    dot={false}
-                    name="Blocked"
-                    activeDot={{ r: 4, fill: "#10b981" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-            <div className="flex items-center gap-6 mt-2">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-6 h-0.5 bg-red-500 rounded" />
-                <span className={isDark ? "text-red-400" : "text-red-600"}>Active Threats</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-6 h-0.5 bg-emerald-500 rounded" />
-                <span className={isDark ? "text-emerald-400" : "text-emerald-600"}>Blocked</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Bottom Row: 3 panels */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Threat Distribution Donut */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className={panelClass}
-            >
-              <h3 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
-                <Zap size={16} className="text-yellow-400" />
-                Threat Distribution
-              </h3>
-              {pieData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={48}
-                        outerRadius={75}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {pieData.map((_, index) => (
-                          <Cell
-                            key={index}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-2 space-y-1.5">
-                    {pieData.slice(0, 5).map((d, i) => (
-                      <div key={d.name} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-                          />
-                          <span className={`truncate ${isDark ? "text-purple-300" : "text-purple-700"}`}>{d.name}</span>
-                        </div>
-                        <span className={`font-mono font-bold ml-2 shrink-0 ${isDark ? "text-white" : "text-purple-950"}`}>
-                          {d.value.toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className={`flex items-center justify-center h-48 text-sm ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                  No data yet
-                </div>
-              )}
-            </motion.div>
-
-            {/* Top Attack Sources */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className={panelClass}
-            >
-              <h3 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
-                <Globe size={16} className="text-red-400" />
-                Top Attack Sources
-              </h3>
-              {topSources.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={topSources}
-                    layout="vertical"
-                    margin={{ left: 0, right: 10, top: 0, bottom: 0 }}
-                  >
-                    <XAxis
-                      type="number"
-                      tick={{ fill: axisColor, fontSize: 10 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="ip"
-                      tick={{ fill: axisColor, fontSize: 10 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={95}
-                    />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Threats">
-                      {topSources.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className={`flex items-center justify-center h-48 text-sm ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                  No data yet
-                </div>
-              )}
-            </motion.div>
-
-            {/* Recent Alerts Ticker */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className={panelClass}
-            >
-              <h3 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                </span>
-                Recent Alerts
-              </h3>
-              <div className="space-y-2">
-                {recentAlerts.length === 0 ? (
-                  <div className={`flex flex-col items-center justify-center py-10 text-sm ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                    <ShieldCheck size={28} className="mb-2 opacity-30" />
-                    <span>Waiting for alerts…</span>
+                {liveLog.length === 0 ? (
+                  <div className={`flex flex-col items-center justify-center h-40 ${isDark ? "text-green-500/50" : "text-gray-400"}`}>
+                    <Activity size={24} className="mb-2" />
+                    <span>Waiting for events…</span>
                   </div>
                 ) : (
-                  recentAlerts.slice(0, 10).map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`flex items-center justify-between text-xs py-1.5 border-b ${
-                        isDark ? "border-purple-500/10" : "border-purple-100"
-                      }`}
-                    >
-                      <div className="min-w-0">
+                  <AnimatePresence initial={false}>
+                    {liveLog.map((alert, i) => (
+                      <motion.div
+                        key={alert.id}
+                        initial={{ opacity: 0, x: -10, backgroundColor: "rgba(239,68,68,0.15)" }}
+                        animate={{ opacity: 1, x: 0, backgroundColor: "transparent" }}
+                        transition={{ duration: 0.4 }}
+                        className={`flex items-start gap-2 py-1 px-1 rounded leading-tight ${
+                          i === 0 ? isDark ? "bg-green-900/10" : "bg-green-50" : ""
+                        }`}
+                      >
+                        {/* Timestamp */}
+                        <span className={`shrink-0 ${isDark ? "text-green-600" : "text-gray-400"}`}>
+                          [{alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : "--:--:--"}]
+                        </span>
+                        {/* Severity dot */}
                         <span
-                          className="font-semibold truncate block"
+                          className="shrink-0 mt-0.5"
                           style={{ color: THREAT_COLORS[alert.label] || "#8b5cf6" }}
-                        >
-                          {alert.label}
+                        >●</span>
+                        {/* Label */}
+                        <span className="font-bold shrink-0" style={{ color: THREAT_COLORS[alert.label] || "#8b5cf6" }}>
+                          {LABEL_EMOJI[alert.label] ?? "🔴"} {alert.label}
                         </span>
-                        <span className={`font-mono ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                          {alert.src_ip}
+                        {/* IPs */}
+                        <span className={isDark ? "text-cyan-400" : "text-cyan-700"}>{alert.src_ip}</span>
+                        <span className={isDark ? "text-gray-500" : "text-gray-400"}>→</span>
+                        <span className={isDark ? "text-purple-400" : "text-purple-600"}>{alert.dst_ip}</span>
+                        {/* Protocol */}
+                        <span className={`shrink-0 px-1 rounded ${isDark ? "bg-blue-900/40 text-blue-300" : "bg-blue-100 text-blue-700"}`}>
+                          {alert.protocol}
                         </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className={alert.is_blocked ? "text-emerald-400" : "text-red-400"}>●</span>
-                        <Clock size={10} className={isDark ? "text-purple-500" : "text-purple-400"} />
-                        <span className={isDark ? "text-purple-500" : "text-purple-400"}>
-                          {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : "—"}
+                        {/* Confidence */}
+                        <span className={isDark ? "text-gray-500" : "text-gray-400"}>{Math.round(alert.confidence)}%</span>
+                        {/* Status */}
+                        {alert.is_blocked && (
+                          <span className={`shrink-0 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>[BLOCKED]</span>
+                        )}
+                        {/* Relative time */}
+                        <span className={`ml-auto shrink-0 ${isDark ? "text-gray-600" : "text-gray-400"}`}>
+                          {relTime(alert.timestamp)}
                         </span>
-                      </div>
-                    </div>
-                  ))
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 )}
               </div>
-            </motion.div>
+            </div>
+
+            {/* Right column — 1/3 */}
+            <div className="space-y-5">
+
+              {/* Protocol Breakdown */}
+              <div className={`${panelClass} p-5`}>
+                <h3 className={`font-bold flex items-center gap-2 mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
+                  <Wifi size={16} className="text-cyan-400" />
+                  Protocol Breakdown
+                </h3>
+                {protocols.length > 0 ? (
+                  <div className="space-y-3">
+                    {protocols.slice(0, 6).map(([name, count]) => (
+                      <ProtocolBar key={name} name={name} count={count} max={maxProto} isDark={isDark} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-xs text-center py-6 ${isDark ? "text-purple-400" : "text-purple-600"}`}>Collecting data…</p>
+                )}
+              </div>
+
+              {/* Active Threat Types */}
+              <div className={`${panelClass} p-5`}>
+                <h3 className={`font-bold flex items-center gap-2 mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
+                  <TrendingUp size={16} className="text-red-400" />
+                  Active Threat Types
+                </h3>
+                {Object.keys(labelActive).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(labelActive)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([label, count]) => (
+                        <div key={label} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm">{LABEL_EMOJI[label] ?? "❓"}</span>
+                            <span className={`text-xs truncate ${isDark ? "text-purple-200" : "text-purple-800"}`}>{label}</span>
+                          </div>
+                          <span
+                            className="text-sm font-black tabular-nums shrink-0"
+                            style={{ color: THREAT_COLORS[label] || "#8b5cf6" }}
+                          >
+                            {count}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className={`flex flex-col items-center py-6 text-xs ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+                    <ShieldCheck size={24} className="mb-2 text-emerald-400 opacity-60" />
+                    No active threats
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Protocol Distribution Bar */}
-          {protocolData.length > 0 && (
+          {/* ── Top Attackers — horizontal list ─────────────────────────── */}
+          {stats.top_sources.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className={panelClass}
+              transition={{ delay: 0.3 }}
+              className={`${panelClass} p-5`}
             >
-              <h3 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
-                <Wifi size={16} className="text-cyan-400" />
-                Protocol Distribution
-                <span className={`text-xs font-normal ml-1 ${isDark ? "text-purple-400" : "text-purple-600"}`}>
-                  (last 20 alerts)
-                </span>
+              <h3 className={`font-bold flex items-center gap-2 mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
+                <Globe size={16} className="text-orange-400" />
+                Top Attacking IPs
+                <span className={`text-xs font-normal ml-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>live session totals</span>
               </h3>
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={protocolData} margin={{ top: 0, right: 10, left: -10, bottom: 0 }}>
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: axisColor, fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: axisColor, fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} name="Count">
-                    {protocolData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {stats.top_sources.slice(0, 12).map((src, i) => (
+                  <div
+                    key={src.ip}
+                    className={`p-3 rounded-xl border text-center ${
+                      isDark
+                        ? "border-orange-500/20 bg-orange-900/10"
+                        : "border-orange-200 bg-orange-50"
+                    }`}
+                  >
+                    <p className={`text-xs font-mono truncate mb-1 ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                      #{i + 1} {src.ip}
+                    </p>
+                    <p className={`text-2xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>{src.count}</p>
+                    <p className={`text-xs mt-0.5 ${isDark ? "text-orange-400/70" : "text-orange-500"}`}>hits</p>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           )}
+
         </div>
       </div>
     </div>
