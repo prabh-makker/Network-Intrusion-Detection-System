@@ -73,7 +73,7 @@ class ModelLoader:
         Returns:
             Path object pointing to scaler file
         """
-        return cls.MODEL_DIR / f"{scaler_name}.pkl"
+        return cls.MODEL_DIR / f"{scaler_name}_scaler.pkl"
 
     @classmethod
     def get_metadata_path(cls, model_name: str = "nids_xgb") -> Path:

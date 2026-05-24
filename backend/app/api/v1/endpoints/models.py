@@ -196,8 +196,8 @@ _SERVICES  = {"http": 0, "ftp": 1, "smtp": 2, "domain_u": 3, "ssh": 4,
                "telnet": 5, "private": 6, "other": 7, "dns": 7}
 _FLAGS     = {"SF": 0, "S0": 1, "REJ": 2, "RSTR": 3, "SH": 4, "RST": 5, "RSTO": 6, "other": 7}
 
-# NSL-KDD authoritative class names
-_NSL_CLASSES = ["Normal", "DoS", "Probe", "R2L (Unauthorized Access)", "U2R (Root Access)"]
+# NSL-KDD authoritative class names (alphabetical order, matching LabelEncoder output)
+_NSL_CLASSES = ["DoS", "Normal", "Probe", "R2L (Unauthorized Access)", "U2R (Root Access)"]
 
 
 def _nsl_kdd_rules(req: "PredictRequest") -> dict:
@@ -273,7 +273,7 @@ def _nsl_kdd_rules(req: "PredictRequest") -> dict:
         # Strong normal indicators: SF flag, same service, low errors
         sf_bonus = 0.08 if flag == "SF" else 0
         ssr_bonus = min(ssr * 0.12, 0.10)
-        error_malus = max(se + re) * 0.08
+        error_malus = (se + re) * 0.08
         normal_conf = min(0.99, 0.82 + sf_bonus + ssr_bonus - error_malus)
 
         probs["Normal"] = normal_conf
@@ -340,28 +340,49 @@ def predict(
 
     if model is not None:
         try:
-            bytes_total = req.src_bytes + req.dst_bytes
             proto_enc   = float(_PROTOCOLS.get(req.protocol_type.lower(), 3))
             svc_enc     = float(_SERVICES.get(req.service.lower(), 7))
             flag_enc    = float(_FLAGS.get(req.flag.upper(), 7))
-            syn_flood   = 1.0 if (req.flag == "S0" and req.count > 50) else (min(req.count / 100.0, 1.0) if req.flag == "S0" else 0.0)
-            velocity    = req.count / max(req.duration, 0.1) if req.duration > 0 else 0.0
-            entropy     = min(float(bytes_total % 256) / 256.0, 1.0)
-            anomaly     = float(np.mean([syn_flood, req.diff_srv_rate, req.serror_rate]))
 
-            # Build 26-feature vector to match ensemble model
-            feature_vec = np.array([[
-                req.duration, req.src_bytes, req.dst_bytes, bytes_total,
-                req.count, req.srv_count, req.same_srv_rate, req.diff_srv_rate,
-                req.serror_rate, req.serror_rate, req.rerror_rate, req.rerror_rate,
-                proto_enc, svc_enc, flag_enc,
-                1.0, 1.0 / max(req.count, 1), syn_flood,
-                velocity, entropy, anomaly,
-                0.1, 0.1,
-                float(req.count > 100),    # high_count_indicator
-                float(req.src_bytes > 10000),  # large_payload_indicator
-                float(se > 0.3 for se in [req.serror_rate]),  # error_prone
-            ]])
+            # Build feature vector matching model's expected input size
+            n_features = getattr(model, 'n_features_in_', 12)
+
+            if n_features == 12:
+                # NSL-KDD 12-feature format (realistic, nsl_kdd models)
+                feature_vec = np.array([[
+                    req.duration,
+                    proto_enc,
+                    svc_enc,
+                    flag_enc,
+                    req.src_bytes,
+                    req.dst_bytes,
+                    req.count,
+                    req.srv_count,
+                    req.serror_rate,
+                    req.rerror_rate,
+                    req.same_srv_rate,
+                    req.diff_srv_rate,
+                ]])
+            else:
+                # 26-feature format for ensemble model (if it ever exists)
+                bytes_total = req.src_bytes + req.dst_bytes
+                syn_flood   = 1.0 if (req.flag == "S0" and req.count > 50) else (min(req.count / 100.0, 1.0) if req.flag == "S0" else 0.0)
+                velocity    = req.count / max(req.duration, 0.1) if req.duration > 0 else 0.0
+                entropy     = min(float(bytes_total % 256) / 256.0, 1.0)
+                anomaly     = float(np.mean([syn_flood, req.diff_srv_rate, req.serror_rate]))
+
+                feature_vec = np.array([[
+                    req.duration, req.src_bytes, req.dst_bytes, bytes_total,
+                    req.count, req.srv_count, req.same_srv_rate, req.diff_srv_rate,
+                    req.serror_rate, req.serror_rate, req.rerror_rate, req.rerror_rate,
+                    proto_enc, svc_enc, flag_enc,
+                    1.0, 1.0 / max(req.count, 1), syn_flood,
+                    velocity, entropy, anomaly,
+                    0.1, 0.1,
+                    float(req.count > 100),
+                    float(req.src_bytes > 10000),
+                    float(req.serror_rate > 0.3),
+                ]])
 
             if scaler is not None:
                 feature_vec = scaler.transform(feature_vec)
