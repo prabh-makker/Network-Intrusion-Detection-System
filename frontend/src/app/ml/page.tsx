@@ -10,6 +10,7 @@ import {
 import {
   BrainCircuit, Cpu, Target, Layers, CheckCircle2,
   AlertTriangle, Activity, Table2, FlaskConical, Zap, Info,
+  Flag, ThumbsUp, ThumbsDown, RotateCw, Loader,
 } from "lucide-react";
 import { getToken, fetchWithAuth } from "@/lib/auth";
 import { getApiUrl } from "@/lib/api";
@@ -108,6 +109,474 @@ interface Packet {
   duration: number; protocol_type: string; service: string; flag: string;
   src_bytes: number; dst_bytes: number; count: number; srv_count: number;
   serror_rate: number; rerror_rate: number; same_srv_rate: number; diff_srv_rate: number;
+}
+interface PredictionCorrection {
+  id: string;
+  timestamp: string;
+  model_predicted: string;
+  model_confidence: number;
+  actual_label?: string;
+  was_correct?: boolean;
+  corrected_by?: string;
+  notes?: string;
+}
+interface CorrectionStats {
+  total_predictions: number;
+  corrected_predictions: number;
+  correction_rate: number;
+  accuracy_with_corrections?: number;
+  top_misclassifications: Array<{
+    model_predicted: string;
+    actual_label: string;
+    count: number;
+  }>;
+}
+interface RetrainingStatus {
+  total_labeled_samples: number;
+  ready_for_retrain: boolean;
+  distribution: Record<string, number>;
+  recommendation: string;
+}
+
+// ─── Prediction Review Component ─────────────────────────────────────────────
+
+function PredictionReviewSection({ apiUrl, isDark }: { apiUrl: string; isDark: boolean }) {
+  const [corrections, setCorrections] = useState<PredictionCorrection[]>([]);
+  const [stats, setStats] = useState<CorrectionStats | null>(null);
+  const [retrainStatus, setRetrainStatus] = useState<RetrainingStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formState, setFormState] = useState<{
+    actual_label: string;
+    is_correct: boolean | null;
+    notes: string;
+  }>({ actual_label: "", is_correct: null, notes: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const THREAT_CLASSES = ["DoS", "Malware", "Normal", "Probe", "R2L", "U2R"];
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [corrRes, statsRes, statusRes] = await Promise.all([
+        fetchWithAuth(`${apiUrl}/api/v1/retrain/corrections/recent?limit=10`),
+        fetchWithAuth(`${apiUrl}/api/v1/retrain/corrections/stats`),
+        fetchWithAuth(`${apiUrl}/api/v1/retrain/data-for-retrain`),
+      ]);
+
+      if (corrRes.ok) setCorrections(await corrRes.json().then(d => d.corrections || []));
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (statusRes.ok) setRetrainStatus(await statusRes.json());
+    } catch (err) {
+      console.error("Failed to fetch corrections:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const submitCorrection = async (predictionId: string) => {
+    if (!formState.actual_label || formState.is_correct === null) {
+      alert("Please select correction status and actual label");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/retrain/correct/${predictionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actual_label: formState.actual_label,
+          is_correct: formState.is_correct,
+          notes: formState.notes || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        setSubmitSuccess(true);
+        setSelectedId(null);
+        setFormState({ actual_label: "", is_correct: null, notes: "" });
+        setTimeout(() => setSubmitSuccess(false), 3000);
+        await fetchData(); // Refresh data
+      } else {
+        alert("Failed to submit correction");
+      }
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Error submitting correction");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selected = corrections.find(c => c.id === selectedId);
+
+  return (
+    <section className="relative">
+      <h2 className="text-2xl font-bold text-[var(--foreground)] mb-6 flex items-center gap-3">
+        <Flag size={20} /> Prediction Review & Corrections
+      </h2>
+      <p className="text-sm text-[var(--muted)] mb-6">
+        Analysts review recent predictions, mark them correct/incorrect, and provide ground truth labels.
+        This feedback retrains the model continuously.
+      </p>
+
+      {/* Top Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <MetricCard
+          label="Total Corrections"
+          value={stats ? String(stats.corrected_predictions) : "—"}
+          icon={CheckCircle2}
+          color="#10b981"
+        />
+        <MetricCard
+          label="Correction Rate"
+          value={stats ? `${stats.correction_rate.toFixed(1)}%` : "—"}
+          icon={Activity}
+          color="#8b5cf6"
+        />
+        <MetricCard
+          label="Model Accuracy"
+          value={stats ? `${(stats.accuracy_with_corrections || 0).toFixed(1)}%` : "—"}
+          icon={BrainCircuit}
+          color="#3b82f6"
+        />
+        <MetricCard
+          label="Labeled Samples"
+          value={retrainStatus ? String(retrainStatus.total_labeled_samples) : "—"}
+          icon={RotateCw}
+          color={retrainStatus?.ready_for_retrain ? "#10b981" : "#f59e0b"}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Predictions */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="lg:col-span-2 glass-panel rounded-2xl p-6"
+        >
+          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+            Recent Predictions Awaiting Review ({corrections.length})
+          </h3>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12 gap-3">
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2 }}>
+                <Loader size={20} className="text-purple-400" />
+              </motion.div>
+              <span className="text-sm text-purple-300 font-semibold">Loading corrections…</span>
+            </div>
+          ) : corrections.length === 0 ? (
+            <div className="py-8 text-center">
+              <Flag size={32} className={`mx-auto mb-3 ${isDark ? "text-slate-700" : "text-slate-300"}`} />
+              <p className="text-[var(--muted)] font-medium">No predictions yet</p>
+              <p className="text-[var(--muted)]/60 text-xs mt-1">Run inference simulator to generate predictions</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {corrections.map((pred, idx) => (
+                <motion.div
+                  key={pred.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => {
+                    setSelectedId(pred.id);
+                    setFormState({
+                      actual_label: pred.actual_label || "",
+                      is_correct: pred.was_correct ?? null,
+                      notes: pred.notes || "",
+                    });
+                  }}
+                  className={`p-3.5 rounded-lg border transition-all cursor-pointer ${
+                    selectedId === pred.id
+                      ? isDark
+                        ? "bg-purple-500/20 border-purple-500/40"
+                        : "bg-purple-100 border-purple-400"
+                      : isDark
+                      ? "bg-white/5 border-white/10 hover:bg-white/8"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-lg"
+                      style={{
+                        background: `${LABEL_COLORS[pred.model_predicted] || "#8b5cf6"}20`,
+                        color: LABEL_COLORS[pred.model_predicted] || "#8b5cf6",
+                      }}
+                    >
+                      {pred.model_predicted === "Normal" ? "✅" : "⚠️"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm truncate" style={{ color: LABEL_COLORS[pred.model_predicted] || "#8b5cf6" }}>
+                          {pred.model_predicted}
+                        </p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                          isDark ? "bg-purple-500/20 text-purple-300" : "bg-purple-100 text-purple-700"
+                        }`}>
+                          {pred.model_confidence.toFixed(1)}%
+                        </span>
+                        {pred.was_correct === true && <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />}
+                        {pred.was_correct === false && <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />}
+                      </div>
+                      <p className="text-[11px] text-[var(--muted)] mt-1">
+                        {new Date(pred.timestamp).toLocaleString()}
+                      </p>
+                      {pred.actual_label && (
+                        <p className="text-xs mt-1 text-[var(--foreground)]">
+                          Actual: <span className="font-semibold">{pred.actual_label}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Correction Form */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="glass-panel rounded-2xl p-6"
+        >
+          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+            Mark Correction
+          </h3>
+
+          {!selected ? (
+            <div className="py-12 text-center">
+              <Flag size={32} className={`mx-auto mb-3 ${isDark ? "text-slate-700" : "text-slate-300"}`} />
+              <p className="text-[var(--muted)] font-medium text-sm">Select a prediction to correct</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Current Prediction */}
+              <div
+                className={`p-3 rounded-lg border ${isDark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"}`}
+              >
+                <p className={`text-xs font-mono uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Model Predicted
+                </p>
+                <p className="text-lg font-bold mt-1" style={{ color: LABEL_COLORS[selected.model_predicted] || "#8b5cf6" }}>
+                  {selected.model_predicted}
+                </p>
+                <p className="text-xs text-[var(--muted)] mt-1">{selected.model_confidence.toFixed(1)}% confidence</p>
+              </div>
+
+              {/* Correction Status */}
+              <div>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Was the prediction correct?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFormState(prev => ({ ...prev, is_correct: true }))}
+                    className={`flex-1 py-2 px-3 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                      formState.is_correct === true
+                        ? isDark
+                          ? "bg-green-500/20 border-green-500/40 text-green-300"
+                          : "bg-green-100 border-green-400 text-green-700"
+                        : isDark
+                        ? "bg-white/5 border-white/10 text-slate-400 hover:bg-white/8"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <ThumbsUp size={12} /> Correct
+                  </button>
+                  <button
+                    onClick={() => setFormState(prev => ({ ...prev, is_correct: false }))}
+                    className={`flex-1 py-2 px-3 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                      formState.is_correct === false
+                        ? isDark
+                          ? "bg-red-500/20 border-red-500/40 text-red-300"
+                          : "bg-red-100 border-red-400 text-red-700"
+                        : isDark
+                        ? "bg-white/5 border-white/10 text-slate-400 hover:bg-white/8"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <ThumbsDown size={12} /> Incorrect
+                  </button>
+                </div>
+              </div>
+
+              {/* Actual Label */}
+              <div>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Actual Threat Type
+                </p>
+                <CustomSelect
+                  value={formState.actual_label}
+                  onChange={v => setFormState(prev => ({ ...prev, actual_label: v }))}
+                  options={THREAT_CLASSES}
+                  isDark={isDark}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Notes (optional)
+                </p>
+                <textarea
+                  value={formState.notes}
+                  onChange={e => setFormState(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Why did you correct this prediction?"
+                  rows={3}
+                  className={`w-full text-xs px-3 py-2 rounded-lg border font-mono resize-none ${
+                    isDark
+                      ? "bg-white/5 border-white/15 text-slate-200 placeholder-slate-500"
+                      : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"
+                  } focus:outline-none focus:border-purple-400`}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                onClick={() => submitCorrection(selected.id)}
+                disabled={submitting || !formState.actual_label || formState.is_correct === null}
+                className="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 transition-all disabled:opacity-60 disabled:cursor-wait"
+              >
+                {submitting ? (
+                  <>
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                      <Loader size={12} />
+                    </motion.div>
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={12} /> Submit Correction
+                  </>
+                )}
+              </button>
+
+              {submitSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3 rounded-lg text-xs font-semibold text-center ${
+                    isDark ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-green-100 text-green-700 border border-green-300"
+                  }`}
+                >
+                  ✓ Correction submitted successfully
+                </motion.div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Misclassifications & Retrain Status */}
+      {stats && stats.top_misclassifications.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Misclassifications */}
+          <div className="glass-panel rounded-2xl p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+              Top Misclassifications
+            </h3>
+            <div className="space-y-2">
+              {stats.top_misclassifications.slice(0, 5).map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`p-3 rounded-lg flex items-center justify-between border ${isDark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"}`}
+                >
+                  <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                    <span className="font-bold truncate" style={{ color: LABEL_COLORS[item.model_predicted] || "#8b5cf6" }}>
+                      {item.model_predicted}
+                    </span>
+                    <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>→</span>
+                    <span className="font-bold truncate" style={{ color: LABEL_COLORS[item.actual_label] || "#a78bfa" }}>
+                      {item.actual_label}
+                    </span>
+                  </div>
+                  <span className={`text-xs font-bold flex-shrink-0 ${isDark ? "text-red-400" : "text-red-600"}`}>
+                    {item.count}x
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Retrain Status */}
+          {retrainStatus && (
+            <div className="glass-panel rounded-2xl p-6">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+                Continuous Learning Status
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className={`text-xs font-mono ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                      Labeled Samples
+                    </p>
+                    <p className="text-sm font-bold text-[var(--foreground)]">{retrainStatus.total_labeled_samples} / 50</p>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((retrainStatus.total_labeled_samples / 50) * 100, 100)}%` }}
+                      transition={{ duration: 0.7 }}
+                      className={`h-full rounded-full ${
+                        retrainStatus.ready_for_retrain
+                          ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                          : "bg-gradient-to-r from-amber-500 to-orange-500"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-lg border text-xs font-semibold text-center ${
+                  retrainStatus.ready_for_retrain
+                    ? isDark
+                      ? "bg-green-500/20 border-green-500/30 text-green-300"
+                      : "bg-green-100 border-green-300 text-green-700"
+                    : isDark
+                    ? "bg-amber-500/20 border-amber-500/30 text-amber-300"
+                    : "bg-amber-100 border-amber-300 text-amber-700"
+                }`}>
+                  {retrainStatus.recommendation}
+                </div>
+
+                {retrainStatus.distribution && Object.keys(retrainStatus.distribution).length > 0 && (
+                  <div>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                      Sample Distribution
+                    </p>
+                    <div className="space-y-1.5">
+                      {Object.entries(retrainStatus.distribution).map(([label, count]) => (
+                        <div key={label} className="flex items-center justify-between text-xs">
+                          <span style={{ color: LABEL_COLORS[label] || "#a78bfa" }} className="font-semibold truncate">
+                            {label}
+                          </span>
+                          <span className={`${isDark ? "text-slate-400" : "text-slate-600"}`}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </section>
+  );
 }
 
 // ─── Feature Type Mapping ────────────────────────────────────────────────────
@@ -650,7 +1119,12 @@ export default function MLAnalyticsPage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 4 — LIVE INFERENCE SIMULATOR
+            SECTION 5 — PREDICTION REVIEW & CONTINUOUS LEARNING
+        ══════════════════════════════════════════════════════════════ */}
+        <PredictionReviewSection apiUrl={apiUrl} isDark={isDark} />
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 6 — LIVE INFERENCE SIMULATOR
         ══════════════════════════════════════════════════════════════ */}
         <section className="relative">
           <h2 className="text-2xl font-bold text-[var(--foreground)] mb-6 flex items-center gap-3">

@@ -498,6 +498,53 @@ def predict(
             if validation_warnings:
                 logger.warning(f"[PREDICT] Validation warnings: {', '.join(validation_warnings)}")
 
+            # ────── STORE PREDICTION FOR RETRAINING ──────────────────────────────────────
+            # Save to database for continuous learning
+            try:
+                from app.db.session import SessionLocal
+                from app.models.models import ThreatLog
+                from sqlalchemy import text
+
+                db = SessionLocal()
+                threat_log = ThreatLog(
+                    label=label,
+                    confidence=confidence,
+                    model_used=model_name,
+                    # Feature vector
+                    duration=req.duration,
+                    protocol_type=req.protocol_type,
+                    service=req.service,
+                    flag=req.flag,
+                    src_bytes=req.src_bytes,
+                    dst_bytes=req.dst_bytes,
+                    count=req.count,
+                    srv_count=req.srv_count,
+                    serror_rate=req.serror_rate,
+                    rerror_rate=req.rerror_rate,
+                    same_srv_rate=req.same_srv_rate,
+                    diff_srv_rate=req.diff_srv_rate,
+                    feature_vector={
+                        "duration": req.duration,
+                        "protocol_type": req.protocol_type,
+                        "service": req.service,
+                        "flag": req.flag,
+                        "src_bytes": req.src_bytes,
+                        "dst_bytes": req.dst_bytes,
+                        "count": req.count,
+                        "srv_count": req.srv_count,
+                        "serror_rate": req.serror_rate,
+                        "rerror_rate": req.rerror_rate,
+                        "same_srv_rate": req.same_srv_rate,
+                        "diff_srv_rate": req.diff_srv_rate,
+                    }
+                )
+                db.add(threat_log)
+                db.commit()
+                db.close()
+                logger.info(f"[RETRAIN] Stored prediction in database for continuous learning")
+            except Exception as e:
+                logger.error(f"[RETRAIN] Failed to store prediction: {str(e)}")
+
             return {
                 "label": label,
                 "confidence": confidence,

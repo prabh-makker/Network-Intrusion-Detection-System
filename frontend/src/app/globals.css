@@ -322,10 +322,13 @@ body::after {
 }
 
 /* Sticky header — white glassmorphism */
-:root.light .bg-\[#0d0d1f\]\/95 {
+:root.light [style*="background: rgba(13, 13, 31, 0.95)"] {
   background-color: rgba(248,245,255,0.96) !important;
   border-bottom: 1px solid rgba(139,92,246,0.15) !important;
   backdrop-filter: blur(24px) !important;
+}
+:root.light .bg-slate-900\/20 {
+  background-color: rgba(248,245,255,0.96) !important;
 }
 
 /* Placeholder */
