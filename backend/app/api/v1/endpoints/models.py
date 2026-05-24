@@ -71,8 +71,13 @@ def get_model_metrics(
     current_user=Depends(deps.get_current_active_user),
 ):
     """Return model info, feature importances, and ACTUAL accuracy metrics from loaded model."""
-    model = ModelLoader.load_model("nids_xgb_ensemble")
-    meta  = ModelLoader.load_metadata("nids_xgb_ensemble")
+    # Try realistic model first, fall back to synthetic
+    model = ModelLoader.load_model("nids_xgb_realistic")
+    meta  = ModelLoader.load_metadata("nids_xgb_realistic")
+
+    if model is None:
+        model = ModelLoader.load_model("nids_xgb_nsl_kdd")
+        meta  = ModelLoader.load_metadata("nids_xgb_nsl_kdd")
 
     feature_names = (meta.get("features") if meta else None) or list(FEATURE_DESCRIPTIONS.keys())
     classes       = (meta.get("classes")  if meta else None) or ["Normal", "DoS", "Probe", "R2L (Unauthorized Access)", "U2R (Root Access)"]
@@ -104,7 +109,7 @@ def get_model_metrics(
 
     accuracy_metrics = {
         "overall_accuracy": actual_accuracy_pct,
-        "model_source": "nids_xgb_ensemble",
+        "model_source": meta.get("model_name", "nids_xgb_realistic") if meta else "nids_xgb_realistic",
         "timestamp": meta.get("timestamp", "unknown") if meta else "unknown",
         "note": "Per-class metrics computed from rule-based inference fallback",
         "by_class": {
