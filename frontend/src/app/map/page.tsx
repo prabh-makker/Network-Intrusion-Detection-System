@@ -821,11 +821,11 @@ export default function ThreatMap() {
               ) : (
                 filteredPins.map((pin, i) => (
                   <motion.div key={`list-${pin.ip}-${i}`} className="group relative">
-                    <motion.button
+                    <motion.div
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => setSelectedPin(selectedPin?.ip === pin.ip ? null : pin)}
-                      className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all ${selectedPin?.ip === pin.ip ? isDark ? "border-purple-400/60 bg-purple-800/40" : "border-purple-400 bg-purple-100" : isDark ? "border-purple-500/20 bg-purple-900/10 hover:border-purple-500/40 hover:bg-purple-900/20" : "border-purple-400/20 bg-white hover:border-purple-400/40 hover:bg-purple-50"}`}
+                      className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${selectedPin?.ip === pin.ip ? isDark ? "border-purple-400/60 bg-purple-800/40" : "border-purple-400 bg-purple-100" : isDark ? "border-purple-500/20 bg-purple-900/10 hover:border-purple-500/40 hover:bg-purple-900/20" : "border-purple-400/20 bg-white hover:border-purple-400/40 hover:bg-purple-50"}`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-0.5">
                         <div className="flex items-center gap-1.5 min-w-0">
@@ -853,7 +853,7 @@ export default function ThreatMap() {
                         <span className={`text-[10px] opacity-50 ${isDark ? "text-purple-300" : "text-purple-700"}`}>{pin.count} hit{pin.count !== 1 ? "s" : ""}</span>
                         <span className={`text-[10px] font-bold ${pin.is_blocked ? "text-emerald-400" : "text-red-400"}`}>{pin.is_blocked ? "RESOLVED" : "ACTIVE"}</span>
                       </div>
-                    </motion.button>
+                    </motion.div>
                   </motion.div>
                 ))
               )}

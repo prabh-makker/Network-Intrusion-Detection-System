@@ -641,7 +641,13 @@ function MetricCard({ label, value, icon: Icon, color }: {
 // ─── Confusion Matrix ─────────────────────────────────────────────────────────
 
 function ConfusionMatrix({ matrix, labels }: { matrix: number[][]; labels: string[] }) {
-  const maxVal = Math.max(...matrix.flat());
+  // Validate matrix is a 2D array
+  if (!matrix || !Array.isArray(matrix) || matrix.length === 0 || !Array.isArray(matrix[0])) {
+    return <div className="text-center py-4 text-gray-500">No confusion matrix data available</div>;
+  }
+
+  const flatMatrix = matrix.flat();
+  const maxVal = flatMatrix.length > 0 ? Math.max(...flatMatrix) : 1;
   const short = (l: string) => l.split(" ")[0];
 
   return (
