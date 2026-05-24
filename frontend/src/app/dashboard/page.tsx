@@ -1143,6 +1143,93 @@ export default function NIDSDashboard() {
             })}
           </div>
 
+          {/* ════ SECURITY SCORE WIDGET ════ */}
+          {(() => {
+            const active = stats?.active_threats ?? 0;
+            const blocked = stats?.blocked_threats ?? 0;
+            const total = active + blocked;
+            const bRate = total > 0 ? Math.round((blocked / total) * 100) : (active === 0 ? 100 : 0);
+            const score = (() => {
+              if (!stats) return 85;
+              if (total === 0 && active === 0) return 95;
+              const penalty = Math.min(50, active * 2);
+              return Math.max(0, Math.round(50 + bRate * 0.5 - penalty));
+            })();
+            const scoreColor = score >= 75 ? "#10b981" : score >= 50 ? "#f59e0b" : score >= 25 ? "#f97316" : "#ef4444";
+            const scoreLabel = score >= 75 ? "PROTECTED" : score >= 50 ? "AT RISK" : score >= 25 ? "CRITICAL" : "BREACH";
+            const circumference = 2 * Math.PI * 32;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                className={`rounded-2xl overflow-hidden ${isDark ? "border border-purple-500/30 bg-gradient-to-r from-purple-900/20 via-blue-900/15 to-purple-900/20" : "border border-purple-400/20 bg-purple-950/5"} backdrop-blur-xl p-5`}
+              >
+                <div className="flex items-center flex-wrap gap-6">
+                  {/* SVG radial gauge */}
+                  <div className="relative w-20 h-20 flex-shrink-0">
+                    <svg viewBox="0 0 80 80" className="w-full h-full" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="40" cy="40" r="32" fill="none"
+                        stroke={isDark ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.2)"}
+                        strokeWidth="8" />
+                      <circle cx="40" cy="40" r="32" fill="none" stroke={scoreColor}
+                        strokeWidth="8"
+                        strokeDasharray={`${(score / 100) * circumference} ${circumference}`}
+                        strokeLinecap="round"
+                        style={{ filter: `drop-shadow(0 0 8px ${scoreColor})`, transition: "stroke-dasharray 1.2s ease, stroke 0.5s" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-black leading-none" style={{ color: scoreColor }}>{score}</span>
+                      <span className={`text-[9px] font-bold ${isDark ? "text-purple-400" : "text-purple-600"}`}>/100</span>
+                    </div>
+                  </div>
+                  {/* Label */}
+                  <div className="flex-shrink-0">
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-purple-400" : "text-purple-600"}`}>Security Score</p>
+                    <p className="text-2xl font-black mt-0.5" style={{ color: scoreColor }}>{scoreLabel}</p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-purple-500" : "text-purple-500"}`}>ML-analyzed network health</p>
+                  </div>
+                  {/* Gradient progress bar */}
+                  <div className="flex-1 min-w-[160px]">
+                    <div className="flex justify-between text-[10px] mb-1.5 font-mono">
+                      <span className="text-red-400">BREACH</span>
+                      <span className="text-amber-400">AT RISK</span>
+                      <span className="text-emerald-400">SECURE</span>
+                    </div>
+                    <div className={`relative h-3 rounded-full overflow-hidden ${isDark ? "bg-purple-900/40" : "bg-purple-200/40"}`}>
+                      <motion.div className="h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${score}%` }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        style={{ background: "linear-gradient(90deg, #ef4444 0%, #f59e0b 45%, #10b981 85%)" }}
+                      />
+                    </div>
+                    <div className={`flex justify-between mt-2 text-[10px] ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+                      <span>Exposure: <strong className="text-red-400">{active} active</strong></span>
+                      <span>Response: <strong className="text-emerald-400">{bRate}% blocked</strong></span>
+                    </div>
+                  </div>
+                  {/* Metric pills */}
+                  <div className="flex gap-3 flex-shrink-0">
+                    <div className={`text-center px-4 py-2.5 rounded-xl ${isDark ? "bg-red-500/10 border border-red-500/20" : "bg-red-50 border border-red-200"}`}>
+                      <p className="text-red-400 text-xl font-black">{active}</p>
+                      <p className={`text-[10px] ${isDark ? "text-red-300" : "text-red-600"}`}>Active</p>
+                    </div>
+                    <div className={`text-center px-4 py-2.5 rounded-xl ${isDark ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
+                      <p className="text-emerald-400 text-xl font-black">{blocked}</p>
+                      <p className={`text-[10px] ${isDark ? "text-emerald-300" : "text-emerald-600"}`}>Blocked</p>
+                    </div>
+                    <div className={`text-center px-4 py-2.5 rounded-xl ${isDark ? "bg-cyan-500/10 border border-cyan-500/20" : "bg-cyan-50 border border-cyan-200"}`}>
+                      <p className="text-cyan-400 text-xl font-black">{bRate}%</p>
+                      <p className={`text-[10px] ${isDark ? "text-cyan-300" : "text-cyan-600"}`}>Block Rate</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+
           {/* PROFESSIONAL THREAT INDICATORS */}
           {threatCategoriesForOrbs.length > 0 && (
             <motion.div

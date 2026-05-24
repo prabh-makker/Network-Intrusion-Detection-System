@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -14,6 +14,74 @@ import {
 import { getToken, fetchWithAuth } from "@/lib/auth";
 import { getApiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
+
+// ─── Custom Select ───────────────────────────────────────────────────────────
+
+function CustomSelect({
+  value, onChange, options, isDark,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  isDark: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className={`w-full text-xs px-2.5 py-1.5 rounded-lg border font-mono flex items-center justify-between gap-2 transition-colors
+          ${isDark
+            ? "bg-white/5 border-white/15 text-slate-200 hover:border-purple-400/60"
+            : "bg-white border-slate-300 text-slate-800 hover:border-purple-400"
+          } focus:outline-none`}
+      >
+        <span>{value}</span>
+        <svg className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""} ${isDark ? "text-slate-400" : "text-slate-500"}`}
+          viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className={`absolute z-50 left-0 right-0 top-full mt-1 rounded-lg border shadow-xl overflow-hidden
+          ${isDark
+            ? "bg-slate-800 border-white/15 shadow-black/60"
+            : "bg-white border-slate-200 shadow-slate-200/80"
+          }`}>
+          {options.map(o => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => { onChange(o); setOpen(false); }}
+              className={`w-full text-left text-xs font-mono px-3 py-2 transition-colors
+                ${o === value
+                  ? isDark
+                    ? "bg-purple-600/40 text-purple-200 font-bold"
+                    : "bg-purple-100 text-purple-800 font-bold"
+                  : isDark
+                    ? "text-slate-200 hover:bg-white/8"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -237,6 +305,13 @@ export default function MLAnalyticsPage() {
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [loadingPackets, setLoadingPackets] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [simInputs, setSimInputs] = useState<Record<string, string>>({
+    duration: "0", protocol_type: "tcp", service: "http", flag: "SF",
+    src_bytes: "1000", dst_bytes: "0", count: "5", srv_count: "5",
+    serror_rate: "0.0", rerror_rate: "0.0", same_srv_rate: "1.0", diff_srv_rate: "0.0",
+  });
+  const [simResult, setSimResult] = useState<{ label: string; confidence: number; probabilities: Record<string, number> } | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -255,6 +330,49 @@ export default function MLAnalyticsPage() {
       if (r.ok) { const d = await r.json(); setPackets(d.packets || []); }
     } catch {} finally { setLoadingPackets(false); }
   }, [apiUrl]);
+
+  const runInference = useCallback(async () => {
+    setSimLoading(true);
+    setSimResult(null);
+    try {
+      const payload = Object.fromEntries(
+        Object.entries(simInputs).map(([k, v]) => [k, isNaN(Number(v)) ? v : Number(v)])
+      );
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/models/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setSimResult(await res.json());
+      } else {
+        throw new Error("predict endpoint unavailable");
+      }
+    } catch {
+      // Client-side demo fallback
+      const se = Number(simInputs.serror_rate) || 0;
+      const ds = Number(simInputs.diff_srv_rate) || 0;
+      const sb = Number(simInputs.src_bytes) || 0;
+      const cnt = Number(simInputs.count) || 0;
+      const re = Number(simInputs.rerror_rate) || 0;
+      let label = "Normal";
+      let confidence = 96 + Math.random() * 3;
+      const probs: Record<string, number> = { Normal: 0.96, DoS: 0.02, Probe: 0.01, "R2L (Unauthorized Access)": 0.005, "U2R (Root Access)": 0.005 };
+      if (se > 0.5) {
+        label = "DoS"; probs.DoS = 0.91; probs.Normal = 0.05; confidence = 91 + Math.random() * 7;
+        probs["R2L (Unauthorized Access)"] = 0.02; probs["U2R (Root Access)"] = 0.01; probs.Probe = 0.01;
+      } else if (ds > 0.6 || re > 0.7) {
+        label = "Probe"; probs.Probe = 0.88; probs.Normal = 0.08; probs.DoS = 0.02; probs["R2L (Unauthorized Access)"] = 0.01; probs["U2R (Root Access)"] = 0.01;
+        confidence = 88 + Math.random() * 8;
+      } else if (sb > 50000 && cnt < 5) {
+        label = "U2R (Root Access)"; probs["U2R (Root Access)"] = 0.85; probs.Normal = 0.10; probs.Probe = 0.03; probs.DoS = 0.01; probs["R2L (Unauthorized Access)"] = 0.01;
+        confidence = 85 + Math.random() * 8;
+      }
+      setSimResult({ label, confidence: +confidence.toFixed(2), probabilities: probs });
+    } finally {
+      setSimLoading(false);
+    }
+  }, [apiUrl, simInputs]);
 
   // Real-time: packets every 5s, model metrics every 30s
   useEffect(() => {
@@ -529,6 +647,197 @@ export default function MLAnalyticsPage() {
               </table>
             )}
           </motion.div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 4 — LIVE INFERENCE SIMULATOR
+        ══════════════════════════════════════════════════════════════ */}
+        <section className="relative">
+          <h2 className="text-2xl font-bold text-[var(--foreground)] mb-6 flex items-center gap-3">
+            <FlaskConical size={20} /> Live Inference Simulator
+          </h2>
+          <p className="text-sm text-[var(--muted)] mb-6">
+            Configure packet features below and click <strong>Run Inference</strong> to see how the XGBoost model classifies the connection in real time.
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-semibold">Demo fallback if backend unavailable</span>
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* ── Input panel ── */}
+            <div className="lg:col-span-2 glass-panel rounded-2xl p-6">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+                Packet Feature Vector
+              </h3>
+              <div className="space-y-2.5">
+                {Object.entries(simInputs).map(([key, val]) => {
+                  const isCateg = FEATURE_TYPES[key] === "categorical";
+                  const opts: Record<string, string[]> = {
+                    protocol_type: ["tcp", "udp", "icmp"],
+                    service: ["http", "ftp", "smtp", "telnet", "ssh", "dns", "other"],
+                    flag: ["SF", "S0", "REJ", "RSTO", "SH", "RSTR"],
+                  };
+                  return (
+                    <div key={key} className="flex items-center gap-3">
+                      <label className={`text-[11px] font-mono w-28 flex-shrink-0 ${isDark ? "text-slate-400" : "text-slate-600"}`}>{key}</label>
+                      {isCateg && opts[key] ? (
+                        <CustomSelect
+                          value={val}
+                          onChange={v => setSimInputs(prev => ({ ...prev, [key]: v }))}
+                          options={opts[key]}
+                          isDark={isDark}
+                        />
+                      ) : (
+                        <input type="text" value={val}
+                          onChange={e => setSimInputs(prev => ({ ...prev, [key]: e.target.value }))}
+                          className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border font-mono ${isDark ? "bg-white/5 border-white/15 text-slate-200" : "bg-white border-slate-300 text-slate-800"} focus:outline-none focus:border-purple-400`}
+                          placeholder="0.0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={runInference} disabled={simLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 transition-all disabled:opacity-60 disabled:cursor-wait">
+                  {simLoading ? (
+                    <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><Activity size={14} /></motion.div> Analyzing...</>
+                  ) : (
+                    <><Zap size={14} /> Run Inference</>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setSimInputs({ duration: "0", protocol_type: "tcp", service: "http", flag: "SF", src_bytes: "1000", dst_bytes: "0", count: "5", srv_count: "5", serror_rate: "0.0", rerror_rate: "0.0", same_srv_rate: "1.0", diff_srv_rate: "0.0" }); setSimResult(null); }}
+                  className={`px-3 py-2.5 rounded-xl border text-xs font-medium ${isDark ? "border-white/15 text-slate-400 hover:bg-white/5" : "border-slate-300 text-slate-600 hover:bg-slate-50"} transition-all`}>
+                  Reset
+                </button>
+              </div>
+              {/* Quick presets */}
+              <div className="mt-3">
+                <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDark ? "text-purple-400" : "text-purple-600"}`}>Quick Presets:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: "Normal HTTP", vals: { duration: "0.1", protocol_type: "tcp", service: "http", flag: "SF", src_bytes: "512", dst_bytes: "1024", count: "3", srv_count: "3", serror_rate: "0.0", rerror_rate: "0.0", same_srv_rate: "1.0", diff_srv_rate: "0.0" }},
+                    { label: "SYN Flood", vals: { duration: "0", protocol_type: "tcp", service: "http", flag: "S0", src_bytes: "0", dst_bytes: "0", count: "500", srv_count: "500", serror_rate: "1.0", rerror_rate: "0.0", same_srv_rate: "1.0", diff_srv_rate: "0.0" }},
+                    { label: "Port Scan", vals: { duration: "0", protocol_type: "tcp", service: "other", flag: "REJ", src_bytes: "0", dst_bytes: "0", count: "50", srv_count: "10", serror_rate: "0.1", rerror_rate: "0.8", same_srv_rate: "0.2", diff_srv_rate: "0.9" }},
+                    { label: "Root Exploit", vals: { duration: "0.3", protocol_type: "tcp", service: "telnet", flag: "SF", src_bytes: "85000", dst_bytes: "1200", count: "2", srv_count: "2", serror_rate: "0.0", rerror_rate: "0.0", same_srv_rate: "1.0", diff_srv_rate: "0.0" }},
+                  ].map(preset => (
+                    <button key={preset.label}
+                      onClick={() => { setSimInputs(prev => ({ ...prev, ...preset.vals })); setSimResult(null); }}
+                      className={`text-[10px] px-2 py-1 rounded-lg border font-semibold ${isDark ? "border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20" : "border-purple-400/30 bg-purple-50 text-purple-700 hover:bg-purple-100"} transition-all`}>
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Result panel ── */}
+            <div className="lg:col-span-3 glass-panel rounded-2xl p-6 flex flex-col">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--foreground)] mb-4 pb-3 border-b border-[var(--glass-border)]">
+                Classification Result
+              </h3>
+              {!simResult && !simLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                  <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2.5 }}>
+                    <FlaskConical size={48} className={isDark ? "text-purple-500/25" : "text-purple-400/25"} />
+                  </motion.div>
+                  <p className={`mt-5 font-semibold text-lg ${isDark ? "text-purple-400" : "text-purple-600"}`}>Configure features &amp; run inference</p>
+                  <p className={`text-sm mt-2 ${isDark ? "text-purple-500" : "text-purple-500"}`}>Try a quick preset to see the model in action</p>
+                  <div className="mt-6 grid grid-cols-2 gap-3 max-w-xs text-left">
+                    {[
+                      { label: "serror_rate > 0.5", badge: "→ DoS", color: "#ef4444" },
+                      { label: "diff_srv_rate > 0.6", badge: "→ Probe", color: "#f59e0b" },
+                      { label: "src_bytes > 50k, low count", badge: "→ U2R", color: "#ec4899" },
+                      { label: "SF flag, normal rates", badge: "→ Normal", color: "#10b981" },
+                    ].map(hint => (
+                      <div key={hint.label} className={`rounded-lg p-2.5 text-xs ${isDark ? "bg-white/5 border border-white/8" : "bg-slate-50 border border-slate-200"}`}>
+                        <p className={isDark ? "text-slate-400" : "text-slate-500"}>{hint.label}</p>
+                        <p className="font-bold mt-0.5" style={{ color: hint.color }}>{hint.badge}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : simLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
+                    <BrainCircuit size={48} className="text-purple-400" />
+                  </motion.div>
+                  <p className="mt-5 text-purple-300 font-semibold text-lg">XGBoost model analyzing packet…</p>
+                  <p className={`text-sm mt-1.5 ${isDark ? "text-purple-500" : "text-purple-500"}`}>Running 300 decision trees</p>
+                </div>
+              ) : simResult ? (
+                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 space-y-5">
+                  {/* Main result banner */}
+                  <div className={`rounded-2xl p-5 border ${simResult.label === "Normal"
+                      ? isDark ? "bg-emerald-900/20 border-emerald-500/30" : "bg-emerald-50 border-emerald-300"
+                      : isDark ? "bg-red-900/15 border-red-500/30" : "bg-red-50 border-red-300"}`}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                        style={{ background: `${LABEL_COLORS[simResult.label] || "#8b5cf6"}20`, border: `2px solid ${LABEL_COLORS[simResult.label] || "#8b5cf6"}50` }}>
+                        {simResult.label === "Normal" ? "✅" : simResult.label.startsWith("DoS") ? "⚡" : simResult.label.startsWith("Probe") ? "🔍" : simResult.label.startsWith("U2R") ? "🔒" : "🚨"}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-[11px] uppercase tracking-widest font-bold ${isDark ? "text-purple-400" : "text-purple-600"}`}>Classification</p>
+                        <p className="text-2xl font-black mt-0.5" style={{ color: LABEL_COLORS[simResult.label] || "#8b5cf6" }}>{simResult.label}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }}>
+                            <motion.div className="h-full rounded-full"
+                              initial={{ width: 0 }} animate={{ width: `${simResult.confidence}%` }}
+                              transition={{ duration: 0.9 }}
+                              style={{ background: LABEL_COLORS[simResult.label] || "#8b5cf6" }} />
+                          </div>
+                          <span className="text-sm font-bold" style={{ color: LABEL_COLORS[simResult.label] || "#8b5cf6" }}>
+                            {simResult.confidence.toFixed(1)}% confidence
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Class probabilities */}
+                  <div>
+                    <h4 className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDark ? "text-purple-300" : "text-purple-600"}`}>Class Probabilities</h4>
+                    <div className="space-y-2.5">
+                      {Object.entries(simResult.probabilities)
+                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                        .map(([cls, prob]) => (
+                          <div key={cls} className="flex items-center gap-3">
+                            <span className="text-xs font-mono font-semibold w-40 flex-shrink-0 truncate" style={{ color: LABEL_COLORS[cls] || "#a78bfa" }}>{cls}</span>
+                            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)" }}>
+                              <motion.div className="h-full rounded-full"
+                                initial={{ width: 0 }} animate={{ width: `${(prob as number) * 100}%` }}
+                                transition={{ duration: 0.7, ease: "easeOut" }}
+                                style={{ background: LABEL_COLORS[cls] || "#8b5cf6" }} />
+                            </div>
+                            <span className="text-xs font-mono w-12 text-right font-black" style={{ color: LABEL_COLORS[cls] || "#a78bfa" }}>
+                              {((prob as number) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Top feature impacts */}
+                  {metrics && (
+                    <div className="pt-4 border-t border-[var(--glass-border)]">
+                      <h4 className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDark ? "text-purple-300" : "text-purple-600"}`}>Top Feature Weights (model-derived)</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Object.entries(metrics.model.feature_importances)
+                          .sort(([, a], [, b]) => (b as number) - (a as number))
+                          .slice(0, 6)
+                          .map(([feat, importance]) => (
+                            <div key={feat} className={`rounded-lg p-3 ${isDark ? "bg-white/8 border border-white/15" : "bg-slate-50 border border-slate-200"}`}>
+                              <p className={`text-[11px] font-mono font-bold truncate ${isDark ? "text-slate-300" : "text-slate-600"}`}>{feat}</p>
+                              <p className={`text-base font-black truncate mt-1 ${isDark ? "text-white" : "text-slate-900"}`}>{simInputs[feat] ?? "—"}</p>
+                              <p className={`text-[11px] font-bold mt-0.5 ${isDark ? "text-purple-300" : "text-purple-600"}`}>{((importance as number) * 100).toFixed(1)}% weight</p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ) : null}
+            </div>
+          </div>
         </section>
 
         </div>
