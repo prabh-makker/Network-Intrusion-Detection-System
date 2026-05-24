@@ -244,8 +244,8 @@ function FeatureImportanceChart({ data, descriptions }: {
         <div className="flex items-center gap-2"><span>🔢</span><span className={isDark ? "text-purple-300" : "text-purple-700"}>Numeric</span></div>
         <div className="flex items-center gap-2"><span>🏷️</span><span className={isDark ? "text-purple-300" : "text-purple-700"}>Categorical</span></div>
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className={`text-xs ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>Live · refreshes every 30s</span>
+          <span className="w-2 h-2 rounded-full bg-blue-400" />
+          <span className={`text-xs ${isDark ? "text-blue-400" : "text-blue-600"}`}>From trained model</span>
         </div>
       </div>
 
