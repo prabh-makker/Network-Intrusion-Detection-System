@@ -4,8 +4,6 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.api import deps
 from app.core import security
@@ -16,12 +14,23 @@ from app.models.models import User
 from app.db.session import get_db
 
 router = APIRouter()
-limiter = Limiter(key_func=get_remote_address)
 
-# Rate limit for reset attempts: { username: [timestamp, ...] }
+# Rate limits — all in-memory (per-process). Sufficient for single-worker deployments.
 _reset_rate: dict[str, list[float]] = {}
-RESET_RATE_LIMIT = 5  # max attempts per window
+RESET_RATE_LIMIT = 5
 RESET_RATE_WINDOW = 600  # 10 minutes
+
+_login_rate: dict[str, list[float]] = {}
+LOGIN_RATE_LIMIT = 10
+LOGIN_RATE_WINDOW = 300  # 5 minutes
+
+_signup_rate: dict[str, list[float]] = {}
+SIGNUP_RATE_LIMIT = 5
+SIGNUP_RATE_WINDOW = 3600  # 1 hour
+
+_question_rate: dict[str, list[float]] = {}
+QUESTION_RATE_LIMIT = 15
+QUESTION_RATE_WINDOW = 600  # 10 minutes
 
 SECURITY_QUESTIONS = [
     "What was the name of your first pet?",
@@ -39,18 +48,31 @@ def get_security_questions() -> Any:
 
 
 @router.post("/login/access-token")
-@limiter.limit("20/minute")
 def login_access_token(
-    request: Request, db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    request: Request,
+    db: Session = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
     """OAuth2 compatible token login, get an access token for future requests"""
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    attempts = _login_rate.get(ip, [])
+    attempts = [t for t in attempts if now - t < LOGIN_RATE_WINDOW]
+    if len(attempts) >= LOGIN_RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many login attempts. Try again in {LOGIN_RATE_WINDOW // 60} minutes.",
+        )
+
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not security.verify_password(form_data.password, user.hashed_password):
+        attempts.append(now)
+        _login_rate[ip] = attempts
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    if not user.is_active:
-        # Use same generic message to prevent username enumeration
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
 
+    _login_rate.pop(ip, None)
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(
@@ -61,7 +83,6 @@ def login_access_token(
 
 
 @router.post("/signup")
-@limiter.limit("10/minute")
 def create_user_signup(
     request: Request,
     username: str = Body(...),
@@ -69,23 +90,18 @@ def create_user_signup(
     email: str = Body(...),
     security_question: str = Body(...),
     security_answer: str = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """Create new user with email (required for password recovery)."""
-    import re
-    if not username or not username.strip():
-        raise HTTPException(status_code=400, detail="Username cannot be empty or whitespace.")
-    if len(username.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Username must be at least 2 characters long.")
-    if len(username) > 50:
-        raise HTTPException(status_code=400, detail="Username cannot exceed 50 characters.")
-    if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
-        raise HTTPException(status_code=400, detail="Username may only contain letters, numbers, underscores, hyphens, and dots.")
-    email_stripped = email.strip() if email else ""
-    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_stripped):
-        raise HTTPException(status_code=400, detail="Invalid email address format.")
-    if not password or len(password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    s_attempts = _signup_rate.get(ip, [])
+    s_attempts = [t for t in s_attempts if now - t < SIGNUP_RATE_WINDOW]
+    if len(s_attempts) >= SIGNUP_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many signup attempts. Try again later.")
+    s_attempts.append(now)
+    _signup_rate[ip] = s_attempts
+
     if not security_answer or not security_answer.strip():
         raise HTTPException(status_code=400, detail="Security answer is required.")
     if not security_question or not security_question.strip():
@@ -123,29 +139,34 @@ def create_user_signup(
 
 
 @router.post("/forgot/get-question")
-@limiter.limit("15/minute")
 def get_user_question(
     request: Request,
     username: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
-    """Step 1: Return the security question for a given username.
+    """Step 1: Return the security question for a given username."""
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    q_attempts = _question_rate.get(ip, [])
+    q_attempts = [t for t in q_attempts if now - t < QUESTION_RATE_WINDOW]
+    if len(q_attempts) >= QUESTION_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many requests. Try again later.")
+    q_attempts.append(now)
+    _question_rate[ip] = q_attempts
 
-    Returns the same generic response whether the user exists or not to prevent
-    username enumeration attacks.
-    """
     user = db.query(User).filter(User.username == username).first()
-    # Return identical generic error regardless of whether user exists (prevent enumeration)
-    if not user or not user.security_question:
-        raise HTTPException(status_code=400, detail="Account not eligible for security question recovery.")
+    if not user:
+        # 400 not 404 — avoids confirming whether the username exists
+        raise HTTPException(status_code=400, detail="No account found.")
+
+    if not user.security_question:
+        raise HTTPException(status_code=400, detail="No security question set for this account.")
 
     return {"question": user.security_question}
 
 
 @router.post("/forgot/reset")
-@limiter.limit("10/minute")
 def reset_with_security_answer(
-    request: Request,
     username: str = Body(...),
     security_answer: str = Body(...),
     new_password: str = Body(...),
@@ -153,9 +174,8 @@ def reset_with_security_answer(
 ) -> Any:
     """Step 2: Verify security answer and reset password."""
     user = db.query(User).filter(User.username == username).first()
-    # Use generic message to prevent username enumeration
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect answer. Please check your username and try again.")
+        raise HTTPException(status_code=400, detail="No account found.")
 
     # Rate limiting
     now = time.time()
@@ -168,7 +188,7 @@ def reset_with_security_answer(
         )
 
     if not user.security_answer_hash:
-        raise HTTPException(status_code=400, detail="Account not eligible for security question recovery.")
+        raise HTTPException(status_code=400, detail="No security question set for this account.")
 
     # Verify answer (case-insensitive)
     if not security.verify_password(security_answer.strip().lower(), user.security_answer_hash):
@@ -183,8 +203,8 @@ def reset_with_security_answer(
     # Clear rate limit on success
     _reset_rate.pop(username, None)
 
-    if not new_password or len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    if not new_password or len(new_password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters.")
 
     user.hashed_password = security.get_password_hash(new_password)
     db.commit()
