@@ -102,6 +102,8 @@ def create_user_signup(
     s_attempts.append(now)
     _signup_rate[ip] = s_attempts
 
+    if not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
     if not security_answer or not security_answer.strip():
         raise HTTPException(status_code=400, detail="Security answer is required.")
     if not security_question or not security_question.strip():
@@ -203,8 +205,8 @@ def reset_with_security_answer(
     # Clear rate limit on success
     _reset_rate.pop(username, None)
 
-    if not new_password or len(new_password) < 4:
-        raise HTTPException(status_code=400, detail="Password must be at least 4 characters.")
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
 
     user.hashed_password = security.get_password_hash(new_password)
     db.commit()

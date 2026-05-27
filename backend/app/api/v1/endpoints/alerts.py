@@ -487,6 +487,7 @@ async def get_alerts_date_range(
 async def geoip_lookup(
     request: Request,
     ip: str,
+    current_user=Depends(deps.get_current_active_user),
 ):
     """Server-side proxy for ip-api.com to avoid CORS/browser restrictions. Results cached to prevent rate limiting.
 
@@ -519,7 +520,7 @@ async def geoip_lookup(
         return _geoip_cache[ip]
 
     try:
-        r = http_requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
+        r = http_requests.get(f"https://ip-api.com/json/{ip}", timeout=5)
         result = r.json()
         # Cache up to 1000 IPs (LRU eviction would be better but this is simple)
         if len(_geoip_cache) < 1000:
