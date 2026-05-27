@@ -135,8 +135,10 @@ async def upload_pcap(
     if not file.filename.endswith('.pcap'):
         return {"error": "Only .pcap files are supported"}
     
-    # Save temp file
-    temp_path = f"temp_{uuid.uuid4()}.pcap"
+    # Save temp file in system temp dir, not CWD
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix=".pcap", delete=False)
+    temp_path = tmp.name
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
