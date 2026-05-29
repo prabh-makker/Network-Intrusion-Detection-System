@@ -1,0 +1,35 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\khalo\\nids\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [36472] using StatReload
+Model not found at C:\Users\khalo\nids\backend\app\shared-models\nids_xgb.pkl
+Model not found in shared models directory
+C:\Users\khalo\nids\backend\app\api\v1\endpoints\alerts.py:635: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query(default="csv", regex="^(csv|json|pdf)$"),
+INFO:     Started server process [41956]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app\api\v1\endpoints\alerts.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41956]
+Model not found at C:\Users\khalo\nids\backend\app\shared-models\nids_xgb.pkl
+Model not found in shared models directory
+C:\Users\khalo\nids\backend\app\api\v1\endpoints\alerts.py:635: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query(default="csv", regex="^(csv|json|pdf)$"),
+INFO:     Started server process [8428]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app\api\v1\endpoints\analytics.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8428]
+Model not found at C:\Users\khalo\nids\backend\app\shared-models\nids_xgb.pkl
+Model not found in shared models directory
+C:\Users\khalo\nids\backend\app\api\v1\endpoints\alerts.py:635: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query(default="csv", regex="^(csv|json|pdf)$"),
+INFO:     Started server process [12732]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app\api\v1\endpoints\analytics.py'. Reloading...

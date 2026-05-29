@@ -1,0 +1,733 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\khalo\\nids\\backend']
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [5168] using WatchFiles
+Model not found at C:\Users\khalo\nids\backend\app\shared-models\nids_xgb.pkl
+Model not found in shared models directory
+C:\Users\khalo\nids\backend\app\api\v1\endpoints\alerts.py:639: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  format: str = Query(default="csv", regex="^(csv|json|pdf)$"),
+INFO:     Started server process [13680]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[LOGIN] Attempting login for: admin
+[LOGIN] Query result: True
+INFO:     127.0.0.1:52649 - "POST /api/v1/login/access-token HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F8DF620>
+INFO:     127.0.0.1:52651 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "OPTIONS /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58205 - "OPTIONS /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49773 - "OPTIONS /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "OPTIONS /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "OPTIONS /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F98B250>
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:65440 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F817C50>
+INFO:     127.0.0.1:58205 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49773 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53514 - "WebSocket /api/v1/traffic/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODAxNTkzMjMsInN1YiI6Ijc0ODhhOWNhLTQ3MWUtNDQyNi1hZDExLWM0MTViNjBlMTZlMCJ9.tE_0iwbR8BQ61viqvbwdLjjs2fOfsIuidiJAF4V4x2s" [accepted]
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+INFO:     connection open
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:65440 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F952BE0>
+INFO:     127.0.0.1:65440 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F9527A0>
+INFO:     127.0.0.1:65440 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA91010>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA95040>
+INFO:     127.0.0.1:65440 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "OPTIONS /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:55573 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA5CE90>
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA5CF50>
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA40F0>
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4230>
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5450>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4370>
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+INFO:     127.0.0.1:62141 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA53390>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F9311D0>
+INFO:     127.0.0.1:51234 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4FF0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4910>
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4230>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5090>
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+INFO:     127.0.0.1:57629 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4EB0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA49B0>
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4EB0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA45F0>
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA49B0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5630>
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA45F0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660F5FDE50>
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57629 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA45F0>
+INFO:     127.0.0.1:60283 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63720 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4230>
+INFO:     127.0.0.1:57629 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA44B0>
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5630>
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5EF0>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4AF0>
+INFO:     127.0.0.1:64206 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5F90>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5D10>
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64206 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x00000266672BCF50>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA45F0>
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64206 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     connection closed
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4910>
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4B90>
+INFO:     127.0.0.1:64206 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62833 - "WebSocket /api/v1/traffic/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODAxNTkzMjMsInN1YiI6Ijc0ODhhOWNhLTQ3MWUtNDQyNi1hZDExLWM0MTViNjBlMTZlMCJ9.tE_0iwbR8BQ61viqvbwdLjjs2fOfsIuidiJAF4V4x2s" [accepted]
+INFO:     connection open
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5310>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA6210>
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "OPTIONS /api/v1/alerts/block-all-active HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+INFO:     127.0.0.1:65251 - "POST /api/v1/alerts/block-all-active HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FA52D50>
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4370>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA5950>
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:55006 - "GET /api/v1/alerts/recent?limit=10 HTTP/1.1" 200 OK
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4F50>
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4A50>
+INFO:     127.0.0.1:65251 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65039 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65039 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/timeline?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/timeline?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4EB0>
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/timeline?time_range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA45F0>
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/stats?time_range=24h HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/recent?limit=100 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[STATS] Endpoint called. current_user: <app.models.models.User object at 0x000002660FAA4050>
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/recent?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/103.22.26.68 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.21.147 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/114.119.222.106 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/203.0.241.240 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/203.0.60.120 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/172.67.240.109 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/114.119.67.2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/198.51.37.156 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/45.22.156.181 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/172.67.115.151 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/198.51.184.151 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/203.0.213.186 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/103.22.252.48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/103.22.21.110 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/13.210.237.95 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/198.51.119.109 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/114.119.176.103 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.16.94 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/103.22.157.187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/45.22.153.193 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/13.210.68.99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/45.22.235.111 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/103.22.112.118 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.142.132 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/172.67.56.123 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/198.51.94.206 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/198.51.138.133 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/103.22.198.16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/198.51.171.3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/103.22.179.242 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/198.51.89.130 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.11.177 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/198.51.89.160 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.207.147 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/103.22.196.13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.54.12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/172.67.77.49 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/203.0.2.200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/alerts/geoip/172.67.42.225 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/geoip/13.210.130.80 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/103.22.26.68 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/13.210.21.147 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/114.119.222.106 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/198.51.37.156 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/203.0.241.240 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/172.67.240.109 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/203.0.60.120 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/114.119.67.2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/45.22.156.181 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/172.67.115.151 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/198.51.184.151 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/203.0.213.186 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/103.22.252.48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/103.22.21.110 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/13.210.237.95 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/13.210.16.94 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/198.51.119.109 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/114.119.176.103 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/103.22.157.187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/45.22.153.193 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/13.210.68.99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/45.22.235.111 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/103.22.112.118 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/13.210.142.132 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/172.67.56.123 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/198.51.94.206 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/198.51.138.133 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/103.22.198.16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/198.51.171.3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/198.51.89.130 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/13.210.11.177 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/103.22.179.242 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/198.51.89.160 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/13.210.207.147 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/geoip/103.22.196.13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "GET /api/v1/alerts/geoip/13.210.54.12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/geoip/172.67.77.49 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/v1/alerts/geoip/203.0.2.200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/alerts/geoip/172.67.42.225 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "GET /api/v1/alerts/geoip/13.210.130.80 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65452 - "OPTIONS /api/v1/retrain/predictions/awaiting-review?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/retrain/corrections/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "OPTIONS /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/models/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/alerts/recent?limit=5000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "OPTIONS /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/retrain/latest-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/retrain/predictions/awaiting-review?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "OPTIONS /api/v1/retrain/corrections/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "OPTIONS /api/v1/models/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56405 - "OPTIONS /api/v1/alerts/recent?limit=5000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "OPTIONS /api/v1/retrain/latest-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "OPTIONS /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/retrain/predictions/awaiting-review?limit=10 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:59465 - "GET /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/retrain/corrections/stats HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:59465 - "GET /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/recent?limit=5000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/retrain/latest-retrain HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:59465 - "GET /api/v1/alerts/recent?limit=5000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55813 - "GET /api/v1/retrain/predictions/awaiting-review?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59111 - "GET /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62565 - "GET /api/v1/retrain/corrections/stats HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/retrain/latest-retrain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/retrain/data-for-retrain HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/models/confusion-matrix HTTP/1.1" 200 OK
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "POST /api/v1/traffic/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/models/confusion-matrix HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/models/preprocessed?limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/models/confusion-matrix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/ml/recommendations/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/analytics/geo HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/remediation/tasks HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/alerts/timeline?range=24h HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/ml/recommendations/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/analytics/geo HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/remediation/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "OPTIONS /api/v1/analytics/trends?time_range=24h&bucket_interval=hour HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "OPTIONS /api/v1/analytics/compliance HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53894 - "GET /api/v1/analytics/compliance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "GET /api/v1/analytics/trends?time_range=24h&bucket_interval=hour HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:60712 - "GET /api/v1/analytics/trends?time_range=24h&bucket_interval=hour HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53894 - "GET /api/v1/analytics/compliance HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+Firewall: OS Windows not supported for active blocking.
+INFO:     127.0.0.1:51480 - "POST /api/v1/alerts/block-all-active HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:51480 - "GET /api/v1/ml/recommendations/ HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:63989 - "GET /api/v1/analytics/compliance HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:51130 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:64577 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:51130 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:64577 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK
+[AUTH DEBUG] Looking up user with ID: 7488a9ca-471e-4426-ad11-c415b60e16e0
+[AUTH DEBUG] User found: True
+INFO:     127.0.0.1:53000 - "GET /api/v1/models/metrics HTTP/1.1" 200 OK

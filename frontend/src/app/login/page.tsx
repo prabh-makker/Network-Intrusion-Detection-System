@@ -336,11 +336,23 @@ export default function LoginPage() {
       const formData = new URLSearchParams();
       formData.append("username", username);
       formData.append("password", password);
+
+      console.log(`[LOGIN] Attempting login to ${apiUrl}/api/v1/login/access-token`);
+
       const res = await fetch(`${apiUrl}/api/v1/login/access-token`, {
-        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString(),
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+        credentials: 'include',
       });
+
+      console.log(`[LOGIN] Response status: ${res.status}`);
+
       const data = await res.json();
-      if (res.ok) {
+      console.log(`[LOGIN] Response data:`, data);
+
+      if (res.ok && data.access_token) {
+        console.log(`[LOGIN] Login successful, setting token`);
         setToken(data.access_token);
         localStorage.setItem("nids_username", username);
         const newUser = localStorage.getItem("nids_new_user");
@@ -351,8 +363,14 @@ export default function LoginPage() {
           router.push("/dashboard");
         }
       }
-      else setError(data.detail || "Login failed");
-    } catch { setError("Connection error"); }
+      else {
+        console.log(`[LOGIN] Login failed:`, data);
+        setError(data.detail || "Login failed");
+      }
+    } catch (error) {
+      console.error(`[LOGIN] Error:`, error);
+      setError(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
     finally { setLoading(false); }
   };
 
@@ -566,6 +584,11 @@ export default function LoginPage() {
                       <GradientButton type="submit" loading={loading}>
                         {loading ? "Authenticating..." : (<>Access Dashboard <ChevronRight size={18} /></>)}
                       </GradientButton>
+
+                      <button type="button" onClick={() => { setUsername("admin"); setPassword("admin123"); setTimeout(() => { const form = document.querySelector('form'); if (form) form.dispatchEvent(new Event('submit', { bubbles: true })); }, 100); }}
+                        className="w-full py-2 text-sm text-center text-slate-400 hover:text-slate-300 border border-white/[0.06] hover:border-purple-500/30 rounded-xl transition-all">
+                        Demo Login
+                      </button>
 
                       <div className="text-center space-y-2 pt-1">
                         <button type="button" onClick={() => { setView("forgot"); setError(""); }}

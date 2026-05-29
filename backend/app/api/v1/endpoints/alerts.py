@@ -83,7 +83,7 @@ FEATURE_IMPORTANCE = {
 @router.get("/recent")
 async def get_recent_alerts(
     db: Session = Depends(get_db),
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=50, le=10000),
     label: Optional[str] = None,
     current_user=Depends(deps.get_current_active_user)
 ):
@@ -116,6 +116,10 @@ async def get_alert_stats(
     current_user=Depends(deps.get_current_active_user)
 ):
     """Get aggregated threat statistics with optional time filtering."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"[STATS] Endpoint called. current_user: {current_user}")
+
     from datetime import datetime, timedelta
 
     # Build time filter
@@ -147,8 +151,8 @@ async def get_alert_stats(
             q = q.filter(ThreatLog.timestamp <= until)
         return q
 
-    total = apply_time(db.query(func.count(ThreatLog.id))).scalar() or 0
-    blocked_count = apply_time(db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True)).scalar() or 0
+    total = apply_time(db.query(func.count(ThreatLog.id)).filter(ThreatLog.label != "Normal")).scalar() or 0
+    blocked_count = apply_time(db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True, ThreatLog.label != "Normal")).scalar() or 0
     active_count = total - blocked_count
 
     by_label = apply_time(
@@ -528,6 +532,74 @@ async def geoip_lookup(
     except Exception:
         raise HTTPException(status_code=502, detail="GeoIP lookup failed")
 
+@router.get("/data-quality/metrics")
+async def get_data_quality_metrics(
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """Get real-time data quality and class balance metrics from threat logs."""
+    from collections import Counter
+
+    # Get all threat logs
+    threats = db.query(ThreatLog).all()
+    total = len(threats)
+
+    if total == 0:
+        return {
+            "total_records": 0,
+            "class_balance": {},
+            "missing_values_pct": 0,
+            "outliers_count": 0,
+            "feature_scaling": "Normalized",
+            "class_imbalance_ratio": "N/A",
+            "data_freshness_min": 0,
+        }
+
+    # Class balance
+    labels = [t.label for t in threats if t.label]
+    label_counts = Counter(labels)
+    class_balance = {
+        label: round((count / total) * 100, 1)
+        for label, count in label_counts.most_common()
+    }
+
+    # Missing values (check key fields)
+    missing_count = 0
+    for t in threats:
+        if not t.src_ip or not t.dst_ip or not t.label:
+            missing_count += 1
+    missing_pct = round((missing_count / total) * 100, 2)
+
+    # Outliers (high confidence predictions with unusual traffic patterns)
+    outliers = sum(1 for t in threats if t.confidence and t.confidence > 99.5)
+
+    # Class imbalance ratio (max:min)
+    if label_counts:
+        max_class_count = max(label_counts.values())
+        min_class_count = min(label_counts.values())
+        imbalance_ratio = round(max_class_count / min_class_count, 2) if min_class_count > 0 else 0
+    else:
+        imbalance_ratio = 0
+
+    # Data freshness (minutes since most recent record)
+    from datetime import datetime, timezone
+    if threats:
+        most_recent = max(t.timestamp for t in threats if t.timestamp)
+        now = datetime.now(timezone.utc)
+        freshness_min = round((now - most_recent).total_seconds() / 60, 1) if most_recent else 0
+    else:
+        freshness_min = 0
+
+    return {
+        "total_records": total,
+        "class_balance": class_balance,
+        "missing_values_pct": missing_pct,
+        "outliers_count": outliers,
+        "feature_scaling": "Normalized",
+        "class_imbalance_ratio": f"{imbalance_ratio}:1",
+        "data_freshness_min": freshness_min,
+    }
+
 from app.services.firewall_service import firewall_service
 import uuid
 
@@ -552,11 +624,156 @@ async def block_threat(
     
     alert.is_blocked = True
     db.commit()
-    
+
     return {
-        "status": "blocked", 
-        "id": alert_id, 
-        "ip": alert.src_ip, 
+        "status": "blocked",
+        "id": alert_id,
+        "ip": alert.src_ip,
         "firewall_active": firewall_status
     }
+
+
+@router.get("/export/threats")
+async def export_threats(
+    db: Session = Depends(get_db),
+    format: str = Query(default="csv", regex="^(csv|json|pdf)$"),
+    start_date: str = Query(default=None),
+    end_date: str = Query(default=None),
+    threat_type: str = Query(default=None),
+    severity_min: float = Query(default=0, ge=0, le=10),
+    severity_max: float = Query(default=10, ge=0, le=10),
+    geo_country: str = Query(default=None),
+    current_user=Depends(deps.get_current_active_user)
+):
+    """
+    Export threats in the specified format with optional filtering.
+
+    Args:
+        format: Export format (csv, json, pdf)
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        threat_type: Filter by threat type (DoS, DDoS, U2R, R2L, Probe)
+        severity_min: Minimum severity score (0-10)
+        severity_max: Maximum severity score (0-10)
+        geo_country: Filter by source country
+
+    Returns:
+        File download in requested format
+    """
+    from datetime import datetime
+    from sqlalchemy import and_
+
+    # Build query filters
+    filters = []
+
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            filters.append(ThreatLog.timestamp >= start_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format")
+
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            filters.append(ThreatLog.timestamp <= end_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format")
+
+    if threat_type:
+        filters.append(ThreatLog.label == threat_type)
+
+    filters.append(ThreatLog.severity_score >= severity_min)
+    filters.append(ThreatLog.severity_score <= severity_max)
+
+    if geo_country:
+        filters.append(ThreatLog.geo_country == geo_country)
+
+    # Query threats
+    threats = db.query(ThreatLog).filter(and_(*filters) if filters else True).order_by(desc(ThreatLog.timestamp)).all()
+
+    if format == "json":
+        # Return JSON export
+        return {
+            "export_type": "threats",
+            "format": "json",
+            "count": len(threats),
+            "export_time": datetime.now(timezone.utc).isoformat(),
+            "filters": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "threat_type": threat_type,
+                "severity_range": f"{severity_min}-{severity_max}",
+                "geo_country": geo_country,
+            },
+            "threats": [
+                {
+                    "id": str(t.id),
+                    "timestamp": t.timestamp.isoformat() if t.timestamp else None,
+                    "src_ip": t.src_ip,
+                    "dst_ip": t.dst_ip,
+                    "protocol": t.protocol,
+                    "threat_type": t.label,
+                    "confidence": t.confidence,
+                    "severity_score": t.severity_score,
+                    "is_blocked": t.is_blocked,
+                    "geo_country": t.geo_country,
+                    "time_to_block_ms": t.time_to_block,
+                    "remediation_status": t.remediation_status.value if t.remediation_status else None,
+                    "threat_notes": t.threat_notes,
+                }
+                for t in threats
+            ]
+        }
+
+    elif format == "csv":
+        # Return CSV export as text
+        import io
+        import csv
+        from fastapi.responses import StreamingResponse
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # CSV header
+        writer.writerow([
+            "Timestamp", "Source IP", "Destination IP", "Protocol",
+            "Threat Type", "Confidence", "Severity Score", "Blocked",
+            "Country", "Time to Block (ms)", "Remediation Status", "Notes"
+        ])
+
+        # CSV rows
+        for t in threats:
+            writer.writerow([
+                t.timestamp.isoformat() if t.timestamp else "",
+                t.src_ip,
+                t.dst_ip,
+                t.protocol,
+                t.label,
+                round(t.confidence, 2) if t.confidence else "",
+                round(t.severity_score, 2) if t.severity_score else "",
+                "Yes" if t.is_blocked else "No",
+                t.geo_country or "",
+                t.time_to_block or "",
+                t.remediation_status.value if t.remediation_status else "",
+                t.threat_notes or "",
+            ])
+
+        response = StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=threats_export.csv"}
+        )
+        return response
+
+    elif format == "pdf":
+        # Return PDF export
+        pdf_data = generate_threat_pdf(threats)
+        from fastapi.responses import FileResponse
+
+        return FileResponse(
+            path=pdf_data,
+            filename="threats_export.pdf",
+            media_type="application/pdf"
+        )
 

@@ -207,7 +207,8 @@
       "Bash(Test-Path \"C:\\\\Users\\\\khalo\\\\nids\\\\.env.example\")",
       "Bash(docker cp *)",
       "Bash(docker compose *)",
-      "Bash(npx jest *)"
+      "Bash(npx jest *)",
+      "Bash(python)"
     ],
     "deny": [
       "Edit(.env)",

@@ -249,19 +249,28 @@ async def get_recommendations(
     - Long-term security improvements
     """
 
-    # Fetch current stats
-    total = db.query(func.count(ThreatLog.id)).scalar() or 0
-    blocked_count = db.query(func.count(ThreatLog.id)).filter(ThreatLog.is_blocked == True).scalar() or 0
-    active_count = total - blocked_count
+    # Fetch current stats — exclude "Normal" traffic from threat counts
+    total = db.query(func.count(ThreatLog.id)).filter(ThreatLog.label != "Normal").scalar() or 0
+    blocked_count = (
+        db.query(func.count(ThreatLog.id))
+        .filter(ThreatLog.is_blocked == True, ThreatLog.label != "Normal")
+        .scalar() or 0
+    )
+    active_count = (
+        db.query(func.count(ThreatLog.id))
+        .filter(ThreatLog.is_blocked == False, ThreatLog.label != "Normal")
+        .scalar() or 0
+    )
 
     by_label = (
         db.query(ThreatLog.label, func.count(ThreatLog.id))
+        .filter(ThreatLog.label != "Normal")
         .group_by(ThreatLog.label)
         .all()
     )
     by_label_active = (
         db.query(ThreatLog.label, func.count(ThreatLog.id))
-        .filter(ThreatLog.is_blocked == False)
+        .filter(ThreatLog.is_blocked == False, ThreatLog.label != "Normal")
         .group_by(ThreatLog.label)
         .all()
     )

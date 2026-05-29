@@ -136,6 +136,53 @@ def get_model_metrics(
     }
 
 
+@router.get("/confusion-matrix")
+def get_confusion_matrix_from_db(
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user),
+):
+    """Calculate ACTUAL confusion matrix from corrected predictions in database."""
+    from sklearn.metrics import confusion_matrix, classification_report
+
+    # Get all corrected predictions
+    corrected_logs = db.query(ThreatLog).filter(
+        ThreatLog.actual_label.isnot(None)
+    ).all()
+
+    if not corrected_logs:
+        return {"message": "No corrected predictions in database yet"}
+
+    classes = ["DoS", "Normal", "Probe", "R2L", "U2R"]
+
+    # Extract predictions and actual labels
+    y_true = [log.actual_label for log in corrected_logs]
+    y_pred = [log.label for log in corrected_logs]
+
+    # Calculate confusion matrix
+    cm = confusion_matrix(y_true, y_pred, labels=classes)
+
+    # Calculate per-class metrics
+    report = classification_report(y_true, y_pred, labels=classes, output_dict=True)
+
+    # Convert numpy array to list
+    cm_list = cm.tolist()
+
+    return {
+        "confusion_matrix": cm_list,
+        "confusion_labels": classes,
+        "total_corrections": len(corrected_logs),
+        "by_class": {
+            cls: {
+                "precision": round(report[cls]["precision"] * 100, 2),
+                "recall": round(report[cls]["recall"] * 100, 2),
+                "f1": round(report[cls]["f1-score"] * 100, 2),
+                "support": int(report[cls]["support"])
+            }
+            for cls in classes if cls in report
+        }
+    }
+
+
 @router.get("/preprocessed")
 def get_preprocessed_traffic(
     limit: int = 20,

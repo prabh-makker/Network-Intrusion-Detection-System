@@ -39,7 +39,12 @@ class ModelLoader:
     """
 
     # Single canonical model directory (environment-configurable)
-    MODEL_DIR = Path(os.getenv("MODEL_DIR", "/app/shared-models"))
+    # Check for Windows path first, then Docker path, then env var
+    _windows_path = Path(r"C:\Users\khalo\nids\backend\app\shared-models")
+    if _windows_path.exists():
+        MODEL_DIR = _windows_path
+    else:
+        MODEL_DIR = Path(os.getenv("MODEL_DIR", "/app/shared-models"))
 
     @classmethod
     def ensure_model_dir(cls) -> None:

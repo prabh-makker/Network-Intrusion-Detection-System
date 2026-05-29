@@ -9,7 +9,10 @@ import {
   Radio,
   Zap,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
+  CheckCircle2,
+  Clock,
   Target,
   Globe,
   Download,
@@ -27,6 +30,9 @@ import {
   Brain,
   CheckCircle,
   Sparkles,
+  Settings,
+  AlertCircle,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import {
   motion,
@@ -53,6 +59,29 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import dynamic from "next/dynamic";
+import type { Preferences } from "@/components/PreferencesModal";
+
+// Dynamically import recommendation components
+const ThreatTrendsChart = dynamic(() => import("@/components/ThreatTrendsChart"), {
+  ssr: false,
+  loading: () => <div className="h-80 bg-gray-800/50 rounded-lg animate-pulse" />,
+});
+
+const GeoThreatMap = dynamic(() => import("@/components/GeoThreatMap"), {
+  ssr: false,
+  loading: () => <div className="h-80 bg-gray-800/50 rounded-lg animate-pulse" />,
+});
+
+const ThreatSeverityMatrix = dynamic(() => import("@/components/ThreatSeverityMatrix"), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-gray-800/50 rounded-lg animate-pulse" />,
+});
+
+
+const PreferencesModal = dynamic(() => import("@/components/PreferencesModal"), {
+  ssr: false,
+});
 
 type Packet = {
   timestamp: number;
@@ -462,6 +491,7 @@ export default function NIDSDashboard() {
   const [threatCount, setThreatCount] = useState(0);
   const [isLive, setIsLive] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [todayStats, setTodayStats] = useState<DashboardStats | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<RecentAlert[]>([]);
   const [timelineRange, setTimelineRange] = useState<"24h" | "7d" | "30d">(
     "24h",
@@ -481,6 +511,10 @@ export default function NIDSDashboard() {
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [isBulkBlocking, setIsBulkBlocking] = useState(false);
   const [connectionCount, setConnectionCount] = useState(0);
+  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
+  const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [remediationWizardOpen, setRemediationWizardOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState<any>(null);
   const chartBufferRef = useRef<
     { time: string; traffic: number; threats: number }[]
   >([]);
@@ -492,6 +526,18 @@ export default function NIDSDashboard() {
     else setAuthenticated(true);
   }, [router]);
 
+  // Load preferences from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("recommendations-preferences");
+    if (saved) {
+      try {
+        setPreferences(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading preferences:", e);
+      }
+    }
+  }, []);
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats`);
@@ -501,6 +547,18 @@ export default function NIDSDashboard() {
       }
     } catch (e) {
       console.error("fetchStats failed:", e);
+    }
+  }, [apiUrl]);
+
+  const fetchTodayStats = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth(`${apiUrl}/api/v1/alerts/stats?time_range=24h`);
+      if (res.ok) {
+        const data = await res.json();
+        setTodayStats(data);
+      }
+    } catch (e) {
+      console.error("fetchTodayStats failed:", e);
     }
   }, [apiUrl]);
 
@@ -521,12 +579,14 @@ export default function NIDSDashboard() {
   useEffect(() => {
     fetchStats();
     fetchAlerts();
+    fetchTodayStats();
     const interval = setInterval(() => {
       fetchStats();
       fetchAlerts();
+      fetchTodayStats();
     }, 5000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchAlerts]);
+  }, [fetchStats, fetchAlerts, fetchTodayStats]);
 
   // Fetch real active connections count every 5s
   useEffect(() => {
@@ -718,13 +778,13 @@ export default function NIDSDashboard() {
       };
     };
 
-    connect();
+    if (authenticated) connect();
     return () => {
       destroyed = true;
       if (retryTimeout) clearTimeout(retryTimeout);
       ws?.close();
     };
-  }, []);
+  }, [authenticated]);
 
   const handlePCAPUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1111,7 +1171,7 @@ export default function NIDSDashboard() {
                   />
                 </div>
 
-                <div className="relative backdrop-blur-xl p-6">
+                <div className="relative backdrop-blur-xl p-5">
                   <div className="flex justify-between items-start">
                     <div>
                       <p
@@ -1120,13 +1180,13 @@ export default function NIDSDashboard() {
                         {s.label}
                       </p>
                       <p
-                        className={`text-4xl font-bold mt-3 ${isDark ? "text-white" : "text-purple-950"}`}
+                        className={`text-4xl font-bold mt-2 ${isDark ? "text-white" : "text-purple-950"}`}
                       >
                         {s.display ?? (
                           <AnimatedNumber value={s.value as number} />
                         )}
                       </p>
-                      <p className="text-xs mt-3" style={{ color: s.color }}>
+                      <p className="text-xs mt-2" style={{ color: s.color }}>
                         {s.trend}
                       </p>
                     </div>
@@ -1137,11 +1197,74 @@ export default function NIDSDashboard() {
                       <s.icon size={24} />
                     </div>
                   </div>
+                  {/* Sparkline */}
+                  {trafficChartData.length > 2 && (
+                    <div className="mt-2 -mx-1 opacity-50 group-hover:opacity-80 transition-opacity">
+                      <ResponsiveContainer width="100%" height={28}>
+                        <LineChart data={trafficChartData.slice(-12)}>
+                          <Line
+                            type="monotone"
+                            dataKey={["traffic", "threats", "traffic", "threats"][i]}
+                            stroke={s.color}
+                            strokeWidth={1.5}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               </motion.div>
               );
             })}
           </div>
+
+          {/* TODAY'S INCIDENT SUMMARY ─────────────────────────────────────── */}
+          {(() => {
+            const worstHour = historicalData.length > 0
+              ? historicalData.reduce((mx, d) => ((d.threats || 0) > (mx.threats || 0) ? d : mx), historicalData[0])
+              : null;
+            const totalToday = todayStats?.total_threats ?? 0;
+            const blockedToday = todayStats?.blocked_threats ?? 0;
+            const blockRateToday = totalToday > 0 ? Math.round((blockedToday / totalToday) * 100) : 0;
+            const avgConf = recentAlerts.length > 0
+              ? Math.round(recentAlerts.reduce((s, a) => s + a.confidence, 0) / recentAlerts.length)
+              : 0;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-2xl p-5 ${isDark ? "border border-amber-500/20 bg-gradient-to-br from-amber-900/10 to-orange-900/5" : "border border-amber-300/40 bg-amber-50/30"} backdrop-blur-xl`}
+              >
+                <h3 className={`text-sm font-bold flex items-center gap-2 mb-4 ${isDark ? "text-amber-200" : "text-amber-900"}`}>
+                  <Clock size={14} className="text-amber-400" />
+                  Today's Incident Summary
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Total Detected", value: totalToday.toLocaleString(), color: "#ef4444", icon: ShieldAlert },
+                    { label: "Blocked Today", value: blockedToday.toLocaleString(), color: "#10b981", icon: ShieldCheck },
+                    { label: "Block Rate", value: `${blockRateToday}%`, color: blockRateToday >= 80 ? "#10b981" : blockRateToday >= 50 ? "#f59e0b" : "#ef4444", icon: Target },
+                    { label: "Avg Confidence", value: avgConf > 0 ? `${avgConf}%` : "—", color: "#a855f7", icon: Zap },
+                  ].map(({ label, value, color, icon: Icon }) => (
+                    <div key={label} className={`rounded-xl p-3 border ${isDark ? "border-purple-500/20 bg-purple-900/10" : "border-purple-300/30 bg-white/50"}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon size={12} style={{ color }} />
+                        <span className={`text-xs ${isDark ? "text-purple-300" : "text-purple-700"}`}>{label}</span>
+                      </div>
+                      <div className="text-xl font-black" style={{ color }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                {worstHour && (worstHour.threats || 0) > 0 && (
+                  <div className={`mt-3 pt-3 border-t text-xs ${isDark ? "border-purple-500/20 text-amber-300" : "border-purple-300/30 text-amber-700"}`}>
+                    ⚠ Peak activity at <span className="font-bold">{worstHour.time}</span> — {worstHour.threats} threats detected
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {/* PROFESSIONAL THREAT INDICATORS */}
           {threatCategoriesForOrbs.length > 0 && (
@@ -1568,9 +1691,10 @@ export default function NIDSDashboard() {
                         key={a.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className={`border-b transition-colors ${
+                        style={{ backgroundColor: selectedAlerts.has(a.id) ? "rgba(6,182,212,0.1)" : "rgba(0,0,0,0)" }}
+                        className={`border-b ${
                           selectedAlerts.has(a.id)
-                            ? isDark ? "bg-cyan-500/10 border-cyan-500/30" : "bg-cyan-100 border-cyan-400/30"
+                            ? isDark ? "border-cyan-500/30" : "border-cyan-400/30"
                             : isDark ? "border-purple-500/10 hover:bg-purple-500/10" : "border-purple-400/10 hover:bg-purple-500/10"
                         }`}
                       >
@@ -1936,6 +2060,7 @@ export default function NIDSDashboard() {
               </FramerAnimatePresence>
             </motion.div>
           </div>
+
         </div>
       </div>
 

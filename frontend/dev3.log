@@ -1,0 +1,93 @@
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\khalo\nids\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\khalo\nids\frontend\package-lock.json
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.28:3000
+
+✓ Starting...
+✓ Ready in 1010ms
+ GET / 307 in 1039ms (compile: 829ms, render: 210ms)
+ GET /login 200 in 460ms (compile: 407ms, render: 53ms)
+ GET / 307 in 94ms (compile: 7ms, render: 87ms)
+ GET /login 200 in 70ms (compile: 5ms, render: 65ms)
+ GET /login 200 in 65ms (compile: 11ms, render: 55ms)
+ GET /dashboard 200 in 75ms (compile: 34ms, render: 41ms)
+ GET /dashboard 200 in 32ms (compile: 5ms, render: 27ms)
+ GET /map 200 in 83ms (compile: 54ms, render: 29ms)
+ GET /alerts 200 in 80ms (compile: 46ms, render: 33ms)
+✓ Compiled in 427ms
+✓ Compiled in 100ms
+✓ Compiled in 132ms
+ GET /alerts 200 in 468ms (compile: 105ms, render: 363ms)
+ GET /map 200 in 32ms (compile: 5ms, render: 26ms)
+ GET /ml 200 in 81ms (compile: 47ms, render: 34ms)
+ GET /map 200 in 23ms (compile: 4ms, render: 20ms)
+ GET /alerts 200 in 31ms (compile: 9ms, render: 22ms)
+ GET /connections 200 in 64ms (compile: 39ms, render: 25ms)
+ GET /analytics 200 in 95ms (compile: 52ms, render: 43ms)
+ GET /analytics 200 in 25ms (compile: 3ms, render: 22ms)
+ GET /dashboard 200 in 166ms (compile: 106ms, render: 60ms)
+ GET /connections 200 in 28ms (compile: 6ms, render: 22ms)
+ GET /alerts 200 in 19ms (compile: 4ms, render: 15ms)
+ GET /map 200 in 29ms (compile: 4ms, render: 24ms)
+ GET /ml 200 in 24ms (compile: 3ms, render: 20ms)
+✓ Compiled in 86ms
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+ GET /ml 200 in 468ms (compile: 95ms, render: 374ms)
+✓ Compiled in 68ms
+ GET /ml 200 in 436ms (compile: 100ms, render: 336ms)
+ GET /recommendations 200 in 65ms (compile: 43ms, render: 22ms)
+✓ Compiled in 74ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /recommendations 200 in 292ms (compile: 71ms, render: 222ms)
+ GET /recommendations 200 in 61ms (compile: 4ms, render: 57ms)
+ GET /performance 200 in 1190ms (compile: 1154ms, render: 36ms)
+ GET /performance 200 in 25ms (compile: 7ms, render: 18ms)
+✓ Compiled in 125ms
+⨯ ReferenceError: AnimatedGauge is not defined
+    at <unknown> (src\app\performance\page.tsx:496:22)
+    at PerformancePage (src\app\performance\page.tsx:524:14)
+  494 |                   {/* SVG half-circle gauge — animated needle */}
+  495 |                   <div className="flex-shrink-0">
+> 496 |                     <AnimatedGauge score={healthScore} color={gColor} bgStroke={bgStroke} GCX={GCX} GCY={GCY} GR={GR} isDark={isDark} />
+      |                      ^
+  497 |                   </div>
+  498 |                   {/* Label */}
+  499 |                   <div> {
+  digest: '2887794284'
+}
+ GET /performance 500 in 460ms (compile: 92ms, render: 369ms)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: AnimatedGauge is not defined
+    at <unknown> (src\app\performance\page.tsx:497:22)
+    at PerformancePage (src\app\performance\page.tsx:525:14)
+  495 |                   {/* SVG half-circle gauge — animated needle */}
+  496 |                   <div className="flex-shrink-0">
+> 497 |                     <AnimatedGauge score={healthScore} color={gColor} bgStroke={bgStroke} GCX={GCX} GCY={GCY} GR={GR} isDark={isDark} />
+      |                      ^
+  498 |                   </div>
+  499 |                   {/* Label */}
+  500 |                   <div> {
+  digest: '2887794284'
+}
+✓ Compiled in 90ms
+ GET /performance 500 in 418ms (compile: 100ms, render: 317ms)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 167ms
+ GET /performance 200 in 416ms (compile: 98ms, render: 317ms)
+✓ Compiled in 67ms
+ GET /performance 200 in 488ms (compile: 113ms, render: 374ms)
+ GET /settings 200 in 740ms (compile: 636ms, render: 104ms)
+ GET /settings 200 in 73ms (compile: 5ms, render: 68ms)
+ GET /settings 200 in 31ms (compile: 7ms, render: 24ms)
+ GET /settings 200 in 18ms (compile: 4ms, render: 14ms)
+✓ Compiled in 78ms
+✓ Compiled in 81ms

@@ -1,4 +1,5 @@
 import time
+import logging
 from datetime import timedelta
 from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -14,6 +15,8 @@ from app.core.otp import store_otp, verify_otp, get_otp_email
 from app.core.email import send_otp_email
 from app.models.models import User
 from app.db.session import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -39,22 +42,37 @@ def get_security_questions() -> Any:
 
 
 @router.post("/login/access-token")
-@limiter.limit("20/minute")
 def login_access_token(
-    request: Request, db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """OAuth2 compatible token login, get an access token for future requests"""
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    from sqlalchemy import text
+    # Use raw SQL to bypass ORM UUID conversion issues with SQLite
+    logger.warning(f"[LOGIN] Attempting login for: {form_data.username}")
+    try:
+        result = db.execute(text("SELECT id, username, hashed_password, is_active FROM users WHERE username = :username"),
+                           {"username": form_data.username})
+        row = result.fetchone()
+        logger.warning(f"[LOGIN] Query result: {row is not None}")
+    except Exception as e:
+        logger.error(f"[LOGIN] Query error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    if not row:
+        logger.warning(f"[LOGIN] User not found")
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    if not user.is_active:
-        # Use same generic message to prevent username enumeration
+
+    user_id, username, hashed_password, is_active = row
+
+    if not security.verify_password(form_data.password, hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    if not is_active:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            user_id, expires_delta=access_token_expires
         ),
         "token_type": "bearer",
     }

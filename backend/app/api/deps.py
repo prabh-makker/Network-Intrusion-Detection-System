@@ -34,12 +34,16 @@ def get_current_user(
     except (jwt.PyJWTError, ValidationError):
         raise credentials_exception
     try:
-        user_id = uuid.UUID(token_data)
+        user_id = str(uuid.UUID(token_data))  # Validate UUID format but keep as string for DB query
     except (ValueError, TypeError):
         raise credentials_exception
+
+    logger.warning(f"[AUTH DEBUG] Looking up user with ID: {user_id}")
     user = db.query(User).filter(User.id == user_id).first()
+    logger.warning(f"[AUTH DEBUG] User found: {user is not None}")
 
     if not user:
+        logger.error(f"[AUTH ERROR] User not found for ID: {user_id}")
         raise HTTPException(status_code=404, detail="User not found")
     return user
 

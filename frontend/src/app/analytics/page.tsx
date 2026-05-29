@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Target,
+  Download,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -67,6 +68,8 @@ export default function AnalyticsPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonData, setComparisonData] = useState<TimelinePoint[]>([]);
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -109,6 +112,29 @@ export default function AnalyticsPage() {
     return () => clearInterval(interval);
   }, [authenticated, fetchTimelineData]);
 
+  const fetchComparisonData = useCallback(async () => {
+    if (!showComparison || timeRange === "custom") { setComparisonData([]); return; }
+    try {
+      const periodMs: Record<string, number> = {
+        "1h": 3600000, "6h": 21600000, "24h": 86400000,
+        "7d": 604800000, "30d": 2592000000,
+      };
+      const ms = periodMs[timeRange] ?? 86400000;
+      const now = new Date();
+      const end = new Date(now.getTime() - ms);
+      const start = new Date(now.getTime() - 2 * ms);
+      const fmt = (d: Date) => d.toISOString().split("T")[0];
+      const url = `${apiUrl}/api/v1/alerts/timeline?time_range=custom&start_date=${fmt(start)}&end_date=${fmt(end)}`;
+      const res = await fetchWithAuth(url);
+      if (res.ok) setComparisonData(await res.json());
+    } catch (e) { console.error("fetchComparison failed:", e); }
+  }, [apiUrl, timeRange, showComparison]);
+
+  useEffect(() => {
+    if (!authenticated) return;
+    fetchComparisonData();
+  }, [authenticated, fetchComparisonData]);
+
   const pieData = stats?.by_label
     ? Object.entries(stats.by_label)
         .map(([name, value]) => ({ name, value: value as number }))
@@ -123,6 +149,39 @@ export default function AnalyticsPage() {
   const avgThreats = timelineData.length > 0
     ? Math.round(timelineData.reduce((sum, d) => sum + (d.threats || 0), 0) / timelineData.length)
     : 0;
+
+  // Period comparison merged data (align by index)
+  const mergedData = timelineData.map((d, i) => ({
+    ...d,
+    prevThreats: comparisonData[i]?.threats ?? undefined,
+  }));
+
+  // Peak point for anomaly marker
+  const peakPoint = timelineData.reduce(
+    (max, d) => ((d.threats || 0) > (max.threats || 0) ? d : max),
+    timelineData[0] ?? { time: "" }
+  );
+
+  // Hour-of-day aggregation from timeline
+  const hourBuckets = Array.from({ length: 24 }, (_, i) => ({ hour: i, threats: 0 }));
+  timelineData.forEach((d) => {
+    const raw = (d.time ?? "").toString();
+    const match = raw.match(/(\d{1,2}):/);
+    const h = match ? parseInt(match[1]) : -1;
+    if (h >= 0 && h < 24) hourBuckets[h].threats += (d.threats || 0);
+  });
+  const maxHour = Math.max(...hourBuckets.map((b) => b.threats), 1);
+
+  const handleExportCSV = () => {
+    if (!timelineData.length) return;
+    const headers = Object.keys(timelineData[0]).join(",");
+    const rows = timelineData.map((r) => Object.values(r).map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([`${headers}\n${rows}`], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `nids-analytics-${timeRange}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden">
@@ -145,14 +204,24 @@ export default function AnalyticsPage() {
               Professional time-filtered analytics · Deep dive into threat patterns
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-500/30 text-cyan-400 transition-all"
-            title="Refresh page"
-          >
-            <RefreshCw size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCSV}
+              disabled={!timelineData.length}
+              className="p-3 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/40 hover:to-teal-500/40 border border-emerald-500/30 text-emerald-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Export CSV"
+            >
+              <Download size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-500/30 text-cyan-400 transition-all"
+              title="Refresh page"
+            >
+              <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Time Range Selector */}
@@ -206,6 +275,21 @@ export default function AnalyticsPage() {
                 </button>
               </div>
             )}
+            {/* Compare previous period toggle */}
+            <button
+              onClick={() => setShowComparison(!showComparison)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                showComparison
+                  ? "bg-purple-500/30 text-purple-200 border border-purple-500/60"
+                  : isDark ? "border border-purple-500/30 text-purple-400 hover:border-purple-500/60" : "border border-purple-400/30 text-purple-600 hover:bg-purple-100"
+              }`}
+            >
+              <span className={`w-8 h-4 rounded-full relative transition-colors ${showComparison ? "bg-purple-500" : isDark ? "bg-purple-800" : "bg-purple-200"}`}>
+                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform shadow ${showComparison ? "translate-x-4" : "translate-x-0.5"}`} />
+              </span>
+              Compare prev period
+            </button>
+
             <div className="ml-auto flex items-center gap-2">
               <span className={`text-sm ${isDark ? "text-purple-300" : "text-purple-700"}`}>Chart:</span>
               <button
@@ -335,7 +419,7 @@ export default function AnalyticsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={400}>
               {chartType === "area" ? (
-                <AreaChart data={timelineData}>
+                <AreaChart data={mergedData}>
                   <defs>
                     <linearGradient id="anaTraffic" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
@@ -365,6 +449,18 @@ export default function AnalyticsPage() {
                   <Area type="monotone" dataKey="traffic" stroke="#06b6d4" strokeWidth={2} fill="url(#anaTraffic)" name="Traffic" />
                   <Area type="monotone" dataKey="threats" stroke="#ef4444" strokeWidth={2} fill="url(#anaThreats)" name="Detected" />
                   <Area type="monotone" dataKey="blocked" stroke="#10b981" strokeWidth={2} fill="url(#anaBlocked)" name="Blocked" />
+                  {showComparison && (
+                    <Area type="monotone" dataKey="prevThreats" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="5 3" fill="none" name="Prev Period" dot={false} />
+                  )}
+                  {peakPoint?.time && peakThreats > 0 && (
+                    <ReferenceLine
+                      x={peakPoint.time}
+                      stroke="#ef4444"
+                      strokeDasharray="4 2"
+                      strokeWidth={1.5}
+                      label={{ value: "⚠ Peak", fill: "#ef4444", fontSize: 10, position: "insideTopLeft" }}
+                    />
+                  )}
                 </AreaChart>
               ) : (
                 <BarChart data={timelineData}>
@@ -386,6 +482,46 @@ export default function AnalyticsPage() {
               )}
             </ResponsiveContainer>
           )}
+        </motion.div>
+
+        {/* ── Hour-of-Day Heatmap ─────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className={`mb-6 rounded-2xl ${isDark ? "border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-blue-900/10" : "border border-purple-400/20 bg-purple-50/10"} backdrop-blur-xl p-6`}
+        >
+          <h2 className={`text-xl font-bold mb-1 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-950"}`}>
+            <Clock size={20} className="text-amber-400" />
+            Attack Hour-of-Day Heatmap
+          </h2>
+          <p className={`text-xs mb-4 ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+            Threat detections aggregated by hour across the selected time range — darker = more attacks
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(24, minmax(0, 1fr))", gap: "4px" }}>
+            {hourBuckets.map((b) => {
+              const intensity = b.threats > 0 ? 0.15 + (b.threats / maxHour) * 0.85 : 0.07;
+              return (
+                <div key={b.hour} className="flex flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded"
+                    style={{ height: 36, background: `rgba(239,68,68,${intensity.toFixed(2)})`, border: "1px solid rgba(239,68,68,0.2)" }}
+                    title={`${b.hour}:00 — ${b.threats} threats`}
+                  />
+                  <span className={`text-[10px] tabular-nums ${isDark ? "text-purple-400" : "text-purple-600"}`}>{b.hour}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <span className={`text-xs ${isDark ? "text-purple-400" : "text-purple-600"}`}>Low</span>
+            <div className="flex gap-0.5">
+              {[0.07, 0.2, 0.4, 0.6, 0.8, 1.0].map((v, i) => (
+                <div key={i} className="w-6 h-3 rounded-sm" style={{ background: `rgba(239,68,68,${v})` }} />
+              ))}
+            </div>
+            <span className={`text-xs ${isDark ? "text-purple-400" : "text-purple-600"}`}>High</span>
+          </div>
         </motion.div>
 
         {/* Two-column: Distribution + Top Sources */}

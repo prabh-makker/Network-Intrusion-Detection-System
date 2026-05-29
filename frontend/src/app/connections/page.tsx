@@ -149,6 +149,12 @@ export default function ActiveConnectionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
+  // Batch select
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBlocking, setBatchBlocking] = useState(false);
+  // Column sort
+  const [sortBy, setSortBy] = useState<"timestamp" | "confidence" | "label">("timestamp");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -246,6 +252,23 @@ export default function ActiveConnectionsPage() {
     }
   };
 
+  // Batch block selected IDs
+  const handleBatchBlock = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchBlocking(true);
+    const ids = Array.from(selectedIds);
+    await Promise.allSettled(ids.map(id => fetchWithAuth(`${apiUrl}/api/v1/alerts/${id}/block`, { method: "POST" })));
+    setConnections(prev => prev.map(c => selectedIds.has(c.id) ? { ...c, is_blocked: true } : c));
+    setSelectedIds(new Set());
+    setBatchBlocking(false);
+    toast("success", `Blocked ${ids.length} threats`);
+  };
+
+  const toggleSort = (col: typeof sortBy) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("desc"); }
+  };
+
   const protocols = Array.from(new Set(connections.map((c) => c.protocol.toUpperCase())));
 
   const filteredConnections = connections
@@ -259,7 +282,23 @@ export default function ActiveConnectionsPage() {
       c.src_ip.includes(searchTerm) ||
       c.dst_ip.includes(searchTerm) ||
       c.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      let av: any, bv: any;
+      if (sortBy === "timestamp") { av = new Date(a.timestamp).getTime(); bv = new Date(b.timestamp).getTime(); }
+      else if (sortBy === "confidence") { av = a.confidence; bv = b.confidence; }
+      else { av = a.label; bv = b.label; }
+      return sortDir === "asc" ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    });
+
+  // Quick stats
+  const avgConf = filteredConnections.length > 0
+    ? Math.round(filteredConnections.reduce((s, c) => s + c.confidence, 0) / filteredConnections.length)
+    : 0;
+  const dominantThreat = Object.entries(stats.by_label_active ?? stats.by_label).sort(([,a],[,b]) => b-a)[0]?.[0] ?? "—";
+  const SortIcon = ({ col }: { col: typeof sortBy }) => (
+    <span className="ml-1 opacity-60 text-xs">{sortBy === col ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}</span>
+  );
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden">
@@ -305,6 +344,23 @@ export default function ActiveConnectionsPage() {
                 </button>
               ))}
             </div>
+
+            <AnimatePresence>
+              {selectedIds.size > 0 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleBatchBlock}
+                  disabled={batchBlocking}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-medium text-sm transition-all flex items-center gap-2 disabled:opacity-60"
+                >
+                  <Ban size={15} /> {batchBlocking ? "Blocking…" : `Block Selected (${selectedIds.size})`}
+                </motion.button>
+              )}
+            </AnimatePresence>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -564,6 +620,32 @@ export default function ActiveConnectionsPage() {
           )}
         </div>
 
+        {/* ── Quick stats bar ──────────────────────────────────────────────── */}
+        <div className={`mb-3 flex items-center gap-4 px-4 py-2 rounded-xl border text-xs flex-wrap ${isDark ? "border-purple-500/20 bg-purple-900/10" : "border-purple-300/30 bg-purple-50/50"}`}>
+          <span className={isDark ? "text-purple-300" : "text-purple-800"}>
+            <span className="font-semibold">{filteredConnections.length}</span> results
+          </span>
+          <span className={`w-px h-4 ${isDark ? "bg-purple-500/30" : "bg-purple-300/50"}`} />
+          <span className={isDark ? "text-purple-300" : "text-purple-800"}>
+            Avg confidence: <span className="font-semibold text-amber-400">{avgConf}%</span>
+          </span>
+          <span className={`w-px h-4 ${isDark ? "bg-purple-500/30" : "bg-purple-300/50"}`} />
+          <span className={isDark ? "text-purple-300" : "text-purple-800"}>
+            Dominant threat: <span className="font-semibold" style={{ color: THREAT_COLORS[dominantThreat] || "#8b5cf6" }}>{dominantThreat}</span>
+          </span>
+          <span className={`w-px h-4 ${isDark ? "bg-purple-500/30" : "bg-purple-300/50"}`} />
+          <span className={isDark ? "text-purple-300" : "text-purple-800"}>
+            Blocked today: <span className="font-semibold text-red-400">{stats.blocked_threats ?? 0}</span>
+          </span>
+          <AnimatePresence>
+            {selectedIds.size > 0 && (
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-amber-400 font-semibold">
+                · {selectedIds.size} selected
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* ── Full-width Table ────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -574,7 +656,30 @@ export default function ActiveConnectionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className={`border-b ${isDark ? "border-purple-500/20" : "border-purple-400/20"}`}>
-                  {["Time", "Source IP", "Destination", "Protocol", "Type", "Confidence", "Status", "Actions"].map((h) => (
+                  <th className={`py-3 px-4 font-medium ${isDark ? "text-purple-300" : "text-purple-800"}`}>
+                    <input
+                      type="checkbox"
+                      checked={filteredConnections.length > 0 && filteredConnections.every(c => selectedIds.has(c.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(filteredConnections.map(c => c.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                      className="accent-purple-500 cursor-pointer"
+                    />
+                  </th>
+                  <th className={`text-left py-3 px-4 font-medium cursor-pointer select-none ${isDark ? "text-purple-300 hover:text-white" : "text-purple-800 hover:text-purple-900"}`} onClick={() => toggleSort("timestamp")}>
+                    Time <SortIcon col="timestamp" />
+                  </th>
+                  {["Source IP", "Destination", "Protocol"].map((h) => (
+                    <th key={h} className={`text-left py-3 px-4 font-medium ${isDark ? "text-purple-300" : "text-purple-800"}`}>{h}</th>
+                  ))}
+                  <th className={`text-left py-3 px-4 font-medium cursor-pointer select-none ${isDark ? "text-purple-300 hover:text-white" : "text-purple-800 hover:text-purple-900"}`} onClick={() => toggleSort("label")}>
+                    Type <SortIcon col="label" />
+                  </th>
+                  <th className={`text-left py-3 px-4 font-medium cursor-pointer select-none ${isDark ? "text-purple-300 hover:text-white" : "text-purple-800 hover:text-purple-900"}`} onClick={() => toggleSort("confidence")}>
+                    Confidence <SortIcon col="confidence" />
+                  </th>
+                  {["Status", "Actions"].map((h) => (
                     <th key={h} className={`text-left py-3 px-4 font-medium ${isDark ? "text-purple-300" : "text-purple-800"}`}>{h}</th>
                   ))}
                 </tr>
@@ -582,7 +687,7 @@ export default function ActiveConnectionsPage() {
               <tbody>
                 {filteredConnections.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className={`py-10 text-center ${isDark ? "text-purple-300" : "text-purple-700"}`}>
+                    <td colSpan={9} className={`py-10 text-center ${isDark ? "text-purple-300" : "text-purple-700"}`}>
                       {loading ? "Loading connections…" : "No connections match current filters"}
                     </td>
                   </tr>
@@ -590,8 +695,16 @@ export default function ActiveConnectionsPage() {
                   filteredConnections.map((conn) => (
                     <tr
                       key={conn.id}
-                      className={`border-b transition-colors group ${isDark ? "border-purple-500/10 hover:bg-purple-500/10" : "border-purple-400/10 hover:bg-purple-500/5"} ${conn.is_blocked ? "opacity-60" : ""}`}
+                      className={`border-b transition-colors group ${isDark ? "border-purple-500/10 hover:bg-purple-500/10" : "border-purple-400/10 hover:bg-purple-500/5"} ${conn.is_blocked ? "opacity-60" : ""} ${selectedIds.has(conn.id) ? (isDark ? "bg-purple-500/15" : "bg-purple-100/60") : ""}`}
                     >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(conn.id)}
+                          onChange={() => setSelectedIds(prev => { const n = new Set(prev); if (n.has(conn.id)) n.delete(conn.id); else n.add(conn.id); return n; })}
+                          className="accent-purple-500 cursor-pointer"
+                        />
+                      </td>
                       <td className={`py-3 px-4 font-mono text-xs ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                         <span className="flex items-center gap-1">
                           <Clock size={11} />

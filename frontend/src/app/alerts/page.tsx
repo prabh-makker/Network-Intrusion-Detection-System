@@ -13,12 +13,18 @@ import {
   Terminal,
   TrendingUp,
   Radio,
+  Pause,
+  Play,
+  Volume2,
+  VolumeX,
+  Filter,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { fetchWithAuth, getToken } from "@/lib/auth";
 import { getApiUrl } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Stats = {
@@ -102,11 +108,30 @@ export default function LiveTrafficPage() {
   const apiUrl = getApiUrl();
 
   const [stats, setStats] = useState<Stats>({ total_threats: 0, by_label: {}, top_sources: [] });
-  const [liveLog, setLiveLog] = useState<LiveAlert[]>([]);   // scrolling event log
-  const [rateTicks, setRateTicks] = useState<RateTick[]>([]); // for alerts/min calc
+  const [liveLog, setLiveLog] = useState<LiveAlert[]>([]);
+  const [rateTicks, setRateTicks] = useState<RateTick[]>([]);
   const [authenticated, setAuthenticated] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [filterPreset, setFilterPreset] = useState<"all" | "critical" | "unblocked">("all");
+  const [rateHistory, setRateHistory] = useState<{ t: string; rate: number }[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
   const prevAlertIds = useRef<Set<string>>(new Set());
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playBeep = () => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "square"; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+  };
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -125,25 +150,34 @@ export default function LiveTrafficPage() {
       if (recentRes.ok) {
         const fresh: LiveAlert[] = await recentRes.json();
 
-        // Find truly new alerts (not seen before)
         const newOnes = fresh.filter((a) => !prevAlertIds.current.has(a.id));
         newOnes.forEach((a) => prevAlertIds.current.add(a.id));
 
-        // Keep full sorted log (newest first), capped at 80
-        setLiveLog((prev) => {
-          const combined = [...newOnes, ...prev];
-          const seen = new Set<string>();
-          return combined
-            .filter((a) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
-            .slice(0, 80);
-        });
+        if (!paused) {
+          setLiveLog((prev) => {
+            const combined = [...newOnes, ...prev];
+            const seen = new Set<string>();
+            return combined
+              .filter((a) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
+              .slice(0, 80);
+          });
+        }
 
-        // Rate tick: record how many NEW alerts arrived this poll
+        // Sound alert for new CRITICAL-label threats
+        if (soundEnabled && newOnes.some(a => ["U2R (Root Access)", "DDoS (Ping of Death)", "Malware"].includes(a.label))) {
+          playBeep();
+        }
+
         const now = Date.now();
         setRateTicks((prev) => {
           const updated = [...prev, { t: now, count: newOnes.length }];
-          // Keep last 60 seconds of ticks
           return updated.filter((tk) => now - tk.t < 60_000);
+        });
+
+        // Keep rolling rate chart (one point per poll)
+        setRateHistory(prev => {
+          const point = { t: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }), rate: newOnes.length };
+          return [...prev, point].slice(-30);
         });
       }
     } catch (e) {
@@ -158,8 +192,14 @@ export default function LiveTrafficPage() {
     return () => clearInterval(interval);
   }, [authenticated, fetchData]);
 
-  // Alerts per minute: sum of all ticks in last 60s
   const alertsPerMin = rateTicks.reduce((sum, tk) => sum + tk.count, 0);
+
+  // Apply filter preset
+  const filteredLog = liveLog.filter(a => {
+    if (filterPreset === "critical") return ["U2R (Root Access)", "DDoS (Ping of Death)", "DDoS", "Malware"].includes(a.label);
+    if (filterPreset === "unblocked") return !a.is_blocked;
+    return true;
+  });
 
   // Protocol breakdown from live log
   const protocolMap: Record<string, number> = {};
@@ -203,18 +243,43 @@ export default function LiveTrafficPage() {
             </p>
           </div>
 
-          {/* Live pulse + rate */}
-          <div className="flex items-center gap-4">
+          {/* Controls */}
+          <div className="flex items-center gap-3 flex-wrap">
             <div className={`px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 ${isDark ? "border-red-500/30 bg-red-900/20 text-red-300" : "border-red-400/30 bg-red-50 text-red-700"}`}>
-              <Zap size={15} />
-              {alertsPerMin} alerts/min
+              <Zap size={15} /> {alertsPerMin} alerts/min
             </div>
+            {/* Pause / Resume */}
+            <button
+              onClick={() => setPaused(p => !p)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-bold transition-all ${
+                paused
+                  ? isDark ? "border-amber-500/40 bg-amber-900/20 text-amber-300" : "border-amber-400/40 bg-amber-50 text-amber-700"
+                  : isDark ? "border-cyan-500/30 bg-cyan-900/10 text-cyan-300" : "border-cyan-400/30 bg-cyan-50 text-cyan-700"
+              }`}
+            >
+              {paused ? <><Play size={14}/> Resume</> : <><Pause size={14}/> Pause</>}
+            </button>
+            {/* Sound toggle */}
+            <button
+              onClick={() => setSoundEnabled(s => !s)}
+              title="Sound alerts for critical threats"
+              className={`p-2 rounded-xl border text-sm font-bold transition-all ${
+                soundEnabled
+                  ? isDark ? "border-purple-500/40 bg-purple-900/20 text-purple-300" : "border-purple-400/40 bg-purple-50 text-purple-700"
+                  : isDark ? "border-white/10 text-white/30 hover:border-white/20" : "border-gray-300 text-gray-400"
+              }`}
+            >
+              {soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
+            </button>
+            {/* Live pulse */}
             <div className="flex items-center gap-2">
               <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                {!paused && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${paused ? "bg-amber-400" : "bg-emerald-500"}`} />
               </span>
-              <span className={`text-sm font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>LIVE</span>
+              <span className={`text-sm font-bold ${paused ? isDark ? "text-amber-400" : "text-amber-600" : isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+                {paused ? "PAUSED" : "LIVE"}
+              </span>
             </div>
           </div>
         </div>
@@ -282,19 +347,66 @@ export default function LiveTrafficPage() {
           {/* ── Main 2-column layout ─────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-            {/* Live Event Log — 2/3 */}
-            <div className={`lg:col-span-2 ${panelClass} p-5 flex flex-col`}>
-              <div className="flex items-center justify-between mb-4">
+            {/* Alert Rate Chart + Live Event Log — 2/3 */}
+            <div className={`lg:col-span-2 ${panelClass} p-5 flex flex-col gap-4`}>
+
+              {/* Alert Rate Mini-Chart */}
+              {rateHistory.length > 2 && (
+                <div>
+                  <p className={`text-xs font-bold mb-1 flex items-center gap-1 ${isDark ? "text-cyan-400" : "text-cyan-700"}`}>
+                    <TrendingUp size={12}/> Alert Rate (last 60s)
+                  </p>
+                  <ResponsiveContainer width="100%" height={60}>
+                    <LineChart data={rateHistory}>
+                      <XAxis dataKey="t" hide />
+                      <YAxis hide />
+                      <RTooltip
+                        contentStyle={{ backgroundColor: isDark ? "#0d0d1f" : "#fff", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 8, fontSize: 11 }}
+                        formatter={(v: any) => [`${v} new`, "Alerts"]}
+                      />
+                      <Line type="monotone" dataKey="rate" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Filter Presets */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter size={13} className={isDark ? "text-purple-400" : "text-purple-600"} />
+                <span className={`text-xs font-semibold ${isDark ? "text-purple-300" : "text-purple-700"}`}>Show:</span>
+                {([
+                  { key: "all",       label: "All Events",     color: "cyan" },
+                  { key: "critical",  label: "🔴 Critical Only", color: "red" },
+                  { key: "unblocked", label: "⚡ Unblocked Only", color: "amber" },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilterPreset(key)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      filterPreset === key
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow"
+                        : isDark ? "border border-purple-500/30 text-purple-300 hover:border-purple-500/60" : "border border-purple-300 text-purple-700 hover:bg-purple-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <span className={`ml-auto text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                  {filteredLog.length} / {liveLog.length} events
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <h3 className={`font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                   <Terminal size={18} className="text-cyan-400" />
-                  Live Event Log
+                  Live Event Log {paused && <span className="text-xs text-amber-400 font-normal">(paused)</span>}
                 </h3>
                 <div className="flex items-center gap-1.5 text-xs">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                   </span>
-                  <span className={isDark ? "text-red-300" : "text-red-600"}>{liveLog.length} events</span>
+                  <span className={isDark ? "text-red-300" : "text-red-600"}>{filteredLog.length} events</span>
                 </div>
               </div>
 
@@ -305,18 +417,18 @@ export default function LiveTrafficPage() {
                   isDark ? "bg-black/40 border border-green-900/30" : "bg-gray-50 border border-gray-200"
                 }`}
               >
-                {liveLog.length === 0 ? (
+                {filteredLog.length === 0 ? (
                   <div className={`flex flex-col items-center justify-center h-40 ${isDark ? "text-green-500/50" : "text-gray-400"}`}>
                     <Activity size={24} className="mb-2" />
-                    <span>Waiting for events…</span>
+                    <span>{paused ? "Feed paused — click Resume to continue" : "Waiting for events…"}</span>
                   </div>
                 ) : (
                   <AnimatePresence initial={false}>
-                    {liveLog.map((alert, i) => (
+                    {filteredLog.map((alert, i) => (
                       <motion.div
                         key={alert.id}
                         initial={{ opacity: 0, x: -10, backgroundColor: "rgba(239,68,68,0.15)" }}
-                        animate={{ opacity: 1, x: 0, backgroundColor: "transparent" }}
+                        animate={{ opacity: 1, x: 0, backgroundColor: "rgba(0,0,0,0)" }}
                         transition={{ duration: 0.4 }}
                         className={`flex items-start gap-2 py-1 px-1 rounded leading-tight ${
                           i === 0 ? isDark ? "bg-green-900/10" : "bg-green-50" : ""
