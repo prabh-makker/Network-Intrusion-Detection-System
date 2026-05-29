@@ -1,8 +1,11 @@
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def send_otp_email(email: str, otp_code: str, username: str) -> bool:
@@ -16,8 +19,8 @@ def send_otp_email(email: str, otp_code: str, username: str) -> bool:
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
 
-    # If SMTP is not configured, return False (never print OTP to logs)
     if not smtp_host or not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured — OTP delivery unavailable for user: %s", username)
         return False
 
     try:
@@ -75,8 +78,9 @@ def send_otp_email(email: str, otp_code: str, username: str) -> bool:
         server.sendmail(smtp_from, email, msg.as_string())
         server.quit()
 
+        logger.info("OTP email sent to: %s", email)
         return True
 
-    except Exception:
-        # Do NOT log the OTP code — it is a security credential
+    except Exception as e:
+        logger.error("Failed to send OTP email to %s: %s", email, e)
         return False
