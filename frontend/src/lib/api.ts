@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8001";  // Backend is on port 8001
+const API_URL = "http://localhost:8000";  // Backend is on port 8000
 
 export const getApiUrl = () => API_URL;
 

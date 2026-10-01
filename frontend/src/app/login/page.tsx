@@ -337,8 +337,6 @@ export default function LoginPage() {
       formData.append("username", username);
       formData.append("password", password);
 
-      console.log(`[LOGIN] Attempting login to ${apiUrl}/api/v1/login/access-token`);
-
       const res = await fetch(`${apiUrl}/api/v1/login/access-token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -346,13 +344,15 @@ export default function LoginPage() {
         credentials: 'include',
       });
 
-      console.log(`[LOGIN] Response status: ${res.status}`);
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Invalid response from server");
+        return;
+      }
 
-      const data = await res.json();
-      console.log(`[LOGIN] Response data:`, data);
-
-      if (res.ok && data.access_token) {
-        console.log(`[LOGIN] Login successful, setting token`);
+      if (res.ok && data?.access_token) {
         setToken(data.access_token);
         localStorage.setItem("nids_username", username);
         const newUser = localStorage.getItem("nids_new_user");
@@ -364,12 +364,12 @@ export default function LoginPage() {
         }
       }
       else {
-        console.log(`[LOGIN] Login failed:`, data);
-        setError(data.detail || "Login failed");
+        const errorMsg = typeof data?.detail === 'string' ? data.detail : "Login failed";
+        setError(errorMsg);
       }
     } catch (error) {
-      console.error(`[LOGIN] Error:`, error);
-      setError(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const msg = error instanceof Error ? error.message : String(error || 'Unknown error');
+      setError(`Connection error: ${msg}`);
     }
     finally { setLoading(false); }
   };
@@ -381,13 +381,30 @@ export default function LoginPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, email: `${username}@nids.local`, security_question: securityQuestion, security_answer: securityAnswer }),
       });
-      const data = await res.json();
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Invalid response from server");
+        return;
+      }
       if (res.ok) {
         localStorage.setItem("nids_new_user", username);
-        setError(""); setSuccess("Account created! Please login."); setView("login"); setUsername(""); setPassword(""); setSecurityQuestion(""); setSecurityAnswer("");
+        setSuccess("Account created! Please login.");
+        setView("login");
+        setUsername("");
+        setPassword("");
+        setSecurityQuestion("");
+        setSecurityAnswer("");
       }
-      else setError(data.detail || "Signup failed");
-    } catch { setError("Connection error"); }
+      else {
+        const errorMsg = typeof data?.detail === 'string' ? data.detail : "Signup failed";
+        setError(errorMsg);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error || 'Unknown error');
+      setError(`Connection error: ${msg}`);
+    }
     finally { setLoading(false); }
   };
 
@@ -399,10 +416,25 @@ export default function LoginPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: forgotUsername }),
       });
-      const data = await res.json();
-      if (res.ok) { setForgotQuestion(data.question); setForgotStep(2); }
-      else setError(data.detail || "User not found");
-    } catch { setError("Connection error"); }
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Invalid response from server");
+        return;
+      }
+      if (res.ok && typeof data?.question === 'string') {
+        setForgotQuestion(data.question);
+        setForgotStep(2);
+      }
+      else {
+        const errorMsg = typeof data?.detail === 'string' ? data.detail : "User not found";
+        setError(errorMsg);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error || 'Unknown error');
+      setError(`Connection error: ${msg}`);
+    }
     finally { setLoading(false); }
   };
 
@@ -415,12 +447,29 @@ export default function LoginPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: forgotUsername, security_answer: forgotAnswer, new_password: newPassword }),
       });
-      const data = await res.json();
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Invalid response from server");
+        return;
+      }
       if (res.ok) {
         setSuccess("Password reset! Please login.");
-        setView("login"); setForgotStep(1); setForgotUsername(""); setForgotQuestion(""); setForgotAnswer(""); setNewPassword("");
-      } else setError(data.detail || "Reset failed");
-    } catch { setError("Connection error"); }
+        setView("login");
+        setForgotStep(1);
+        setForgotUsername("");
+        setForgotQuestion("");
+        setForgotAnswer("");
+        setNewPassword("");
+      } else {
+        const errorMsg = typeof data?.detail === 'string' ? data.detail : "Reset failed";
+        setError(errorMsg);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error || 'Unknown error');
+      setError(`Connection error: ${msg}`);
+    }
     finally { setLoading(false); }
   };
 

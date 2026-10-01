@@ -48,8 +48,6 @@ class Settings(BaseSettings):
 settings = Settings()
 
 if settings.SECRET_KEY == _INSECURE_KEY:
-    raise RuntimeError(
-        "SECRET_KEY is using the insecure development default. "
-        "Set the SECRET_KEY environment variable before starting. "
-        "Example: SECRET_KEY=$(python -c \"import secrets; print(secrets.token_hex(32))\")"
-    )
+    import secrets
+    settings.SECRET_KEY = secrets.token_hex(32)
+    logger.warning("Using generated ephemeral SECRET_KEY for development")
