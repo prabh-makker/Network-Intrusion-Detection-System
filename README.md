@@ -5,7 +5,7 @@
 ## ✨ Features
 
 - **🔍 Real-Time Packet Sniffing** — Scapy-based network packet capture with live traffic analysis
-- **🧠 AI-Powered Classification** — Random Forest ML model (98.95% accuracy) detecting DoS, DDoS, Probe, and Privilege Escalation attacks
+- **🧠 AI-Powered Classification** — XGBoost classifier (99.97% accuracy, 96.8% macro F1 on deduplicated KDD Cup 99; see ML Model) detecting DoS, Probe, R2L and U2R attacks
 - **📊 Live Dashboard** — Glassmorphic React dashboard with real-time traffic flow charts and threat monitoring
 - **🚨 Threat Alerts** — Searchable/filterable alert system with block actions
 - **🤖 AI Explainability** — Understand *why* the model flagged each threat (key features, severity, mitigation)
@@ -18,7 +18,7 @@
 graph TD
     A[Scapy Packet Sniffer] -->|Raw Network Packets| B(Feature Extraction)
     B -->|Structured Data| C{ML Inference Engine}
-    C -->|Random Forest 99.8%| D[FastAPI Backend]
+    C -->|XGBoost| D[FastAPI Backend]
     
     D -->|PostgreSQL / SQLite| E[(Threat DB)]
     D -->|WebSockets| F((Live React Dashboard))
@@ -41,9 +41,9 @@ graph TD
 | Frontend | Next.js 16, React, TypeScript, Tailwind CSS, Recharts, Framer Motion |
 | Backend | FastAPI (Python), SQLAlchemy, WebSockets |
 | Database | SQLite (PostgreSQL-ready) |
-| ML Model | Scikit-learn (Random Forest), Joblib |
+| ML Model | XGBoost, scikit-learn, Joblib |
 | Sniffer | Scapy |
-| Dataset | Synthetic NSL-KDD |
+| Dataset | KDD Cup 99 (10%, via scikit-learn) for the reported metrics |
 
 ## 🚀 Quick Start
 
@@ -85,10 +85,12 @@ Navigate to **http://localhost:3001**
 
 ## 📊 ML Model
 
-- **Algorithm:** Random Forest Classifier (Trained on 25,000 Real KDD-Cup 99 Packets)
-- **Accuracy:** 99.82%
-- **Attack Classes:** Normal, DoS, DDoS (Ping of Death), Probe, U2R (Root Access)
-- **Features:** 12 network traffic features (protocol, flags, byte counts, error rates, connection counts)
+- **Algorithm:** XGBoost classifier, 5 classes: Normal, DoS, Probe, R2L, U2R
+- **Data:** KDD Cup 99 (10% set from `sklearn.datasets.fetch_kddcup99`), duplicates removed: 145,584 rows, stratified 80/20 split
+- **Result (held-out 20%):** accuracy 99.97%, macro F1 96.84%. U2R is the weak class (F1 0.86, only 10 test samples), so look at macro F1 rather than accuracy.
+- **Reproduce:** `cd ml-models/nids_training && python train_kdd99.py`
+- **Caveat:** KDD Cup 99 is an old benchmark. Scores on it are optimistic compared with live traffic.
+- **Note:** `data/KDDTrain+.txt` and `KDDTest+.txt` in this repo are synthetic (random features), not the real NSL-KDD files. `train.py` trained on them reaches only about 53%. Replace them with the real files from https://www.unb.ca/cic/datasets/nsl-kdd.html before using `train.py`.
 
 ## 📖 Documentation
 

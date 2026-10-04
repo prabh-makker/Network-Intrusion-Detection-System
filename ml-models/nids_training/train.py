@@ -326,7 +326,7 @@ def train_model_with_cv(X_train, y_train, X_test, y_test):
     cv_scores = []
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train), 1):
-        logger.info(f"  Fold {fold}/5...", end=" ")
+        logger.info(f"  Fold {fold}/5...")
 
         X_fold_train = X_train[train_idx]
         X_fold_val = X_train[val_idx]
