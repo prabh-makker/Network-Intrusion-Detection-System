@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\khalo\nids\backend\app\main.py", line 7, in <module>
-    from app.api.v1.api import api_router
-ModuleNotFoundError: No module named 'app'

@@ -1,8 +1,0 @@
-INFO:     Will watch for changes in these directories: ['C:\\Users\\khalo\\nids\\backend']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [19528] using WatchFiles
-Model not found at C:\Users\khalo\nids\backend\app\shared-models\nids_xgb.pkl
-Model not found in shared models directory
-INFO:     Started server process [16600]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.

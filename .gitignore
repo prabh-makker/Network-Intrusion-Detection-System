@@ -50,3 +50,8 @@ __pycache__/
 *.pyc
 .DS_Store
 backend/nids.db
+
+# Logs, pids, local settings
+*.log
+*.pid
+.claude/settings.local.json
