@@ -18,7 +18,7 @@
 
 ### Phase 2: AI Classification Engine
 - [x] Synthetic NSL-KDD dataset generator (10,000 samples)
-- [x] Random Forest classifier trained at 98.95% accuracy
+- [x] XGBoost classifier: 99.97% accuracy, 96.84% macro F1 on deduplicated KDD Cup 99 (train_kdd99.py)
 - [x] Model persistence with `.joblib` and `model_metadata.json`
 - [x] 5 attack classes: Normal, DoS, DDoS (Ping of Death), Probe, U2R (Root Access)
 - [x] AI inference integrated into `sniffer/sniffer.py` with feature extraction

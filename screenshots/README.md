@@ -1,7 +1,7 @@
 # NIDS Sentinel - 8 Component Screenshots
 
 ## System Overview
-- **Backend**: FastAPI + XGBoost ML Model (99.97% accuracy)
+- **Backend**: FastAPI + XGBoost (benchmark: 99.97% accuracy, 96.8% macro F1 on KDD Cup 99)
 - **Frontend**: Next.js React App
 - **ML Model**: XGBoost Classifier (150 trees, 8 max depth)
 - **Database**: PostgreSQL (ThreatLog table)
@@ -70,70 +70,22 @@ Additional alert entries:
 
 ---
 
-### 6️⃣ ML ANALYTICS - TOP (`4_ml_top.png`)
-Model metrics and performance:
-- **Model Type**: "XGBoost Classifier"
-- **Hyperparameters**: 
-  - n_estimators: 150
-  - max_depth: 8
-  - learning_rate: 0.1
-- **Accuracy**: 99.97% overall
-- **Classes**: DoS, Normal, Probe, R2L (Unauthorized Access), U2R (Root Access)
+### 6️⃣ ML ANALYTICS
 
-**Metrics Cards**:
-- Overall Accuracy: 99.97%
-- Total Test Samples: 20,000
-- Class Count: 5 threat types
-- Feature Count: 12 input features
+Old ML-page screenshots were removed because they showed placeholder metrics. Real benchmark
+(`ml-models/nids_training/train_kdd99.py`, held-out 20% of deduplicated KDD Cup 99, 29,117 rows):
 
----
+- Accuracy 99.97%, macro F1 96.84%
 
-### 7️⃣ ML ANALYTICS - MIDDLE (`4b_ml_middle.png`)
-Confusion Matrix visualization:
-```
-┌─────────────────────────────────────┐
-│  CONFUSION MATRIX (5x5)            │
-│                                     │
-│  DoS:    [15854, 0, 0, 0, 0]       │
-│  Normal: [1, 3920, 3, 0, 0]       │
-│  Probe:  [0, 3, 175, 0, 0]        │
-│  R2L:    [0, 0, 0, 41, 0]         │
-│  U2R:    [0, 0, 0, 0, 3]          │
-│                                     │
-│  Perfect diagonal = perfect recall  │
-└─────────────────────────────────────┘
-```
+| Class | Precision | Recall | F1 | Test rows |
+|---|---|---|---|---|
+| DoS | 100.00 | 100.00 | 100.00 | 10,914 |
+| Normal | 99.96 | 99.99 | 99.97 | 17,567 |
+| Probe | 100.00 | 99.06 | 99.53 | 426 |
+| R2L | 99.49 | 98.50 | 98.99 | 200 |
+| U2R | 81.82 | 90.00 | 85.71 | 10 |
 
-**Per-Class Metrics Table**:
-- DoS: Precision 99.99%, Recall 100.0%, F1 100.0%
-- Normal: Precision 99.92%, Recall 99.9%, F1 99.91%
-- Probe: Precision 98.31%, Recall 98.31%, F1 98.31%
-- R2L: Precision 100.0%, Recall 100.0%, F1 100.0% ⭐ IMPROVED
-- U2R: Precision 100.0%, Recall 100.0%, F1 100.0% ⭐ IMPROVED
-
----
-
-### 8️⃣ ML ANALYTICS - BOTTOM (`4c_ml_bottom.png`)
-Feature importance & preprocessed traffic:
-- **Feature Importance Bar Chart** (Horizontal bars):
-  - srv_count: 16.8% (highest)
-  - count: 13.5%
-  - service: 13.0%
-  - serror_rate: 11.6%
-  - dst_bytes: 10.1%
-  - duration: 8.9%
-  - diff_srv_rate: 8.2%
-  - src_bytes: 6.5%
-  - rerror_rate: 4.8%
-  - protocol_type: 2.1%
-  - same_srv_rate: 2.6%
-  - flag: 1.9%
-
-- **Preprocessed Traffic Table**:
-  - Sample packets with extracted 12-feature vectors
-  - Timestamp, Source IP, Destination IP, Protocol, Service, Flag
-  - src_bytes, srv_count, serror_rate, etc.
-  - Label and Confidence score
+The live dashboard itself runs a demo model trained on synthetic data, on simulated traffic.
 
 ---
 
@@ -151,11 +103,11 @@ Network threat visualization:
 
 | # | Component | Visible In | Status |
 |---|-----------|-----------|--------|
-| 1 | Raw Network Traffic Capture | Dashboard, Alerts | ✅ Live Scapy sniffer |
+| 1 | Raw Network Traffic Capture | Dashboard, Alerts | ✅ Scapy sniffer / simulated traffic |
 | 2 | Traffic Distribution Graph | Dashboard (chart) | ✅ Real-time Recharts |
 | 3 | Real-Time Dashboard UI | Dashboard page | ✅ WebSocket streaming |
-| 4 | Detection Results Table | ML page (confusion matrix) | ✅ XGBoost metrics |
-| 5 | Database Logs | Alerts page (table) | ✅ PostgreSQL ThreatLog |
+| 4 | Detection Results Table | ML page (confusion matrix) | ✅ XGBoost metrics (benchmark) |
+| 5 | Database Logs | Alerts page (table) | ✅ SQLite ThreatLog |
 | 6 | Alert Notifications | Dashboard (live feed) | ✅ Toast + table alerts |
 | 7 | WebSocket Real-Time Updates | Dashboard | ✅ ws://localhost:8001/ws |
 | 8 | API Response Examples | ML page (metrics display) | ✅ /api/v1/models/* |
@@ -197,25 +149,19 @@ Returns stored threat logs from database
 
 ## System Statistics
 
-**ML Model Performance**:
-- Overall Accuracy: 99.97%
-- DoS Detection: 100% recall
-- Normal Traffic: 99.9% recall
-- Probe Detection: 98.31% recall
-- R2L Detection: 100% (improved from RF's 91.71%)
-- U2R Detection: 100% (improved from RF's 85.19%)
+**ML Model Performance** (KDD Cup 99 benchmark, see section 6):
+- Overall Accuracy: 99.97%, macro F1: 96.84%
+- Recall: DoS 100%, Normal 99.99%, Probe 99.06%, R2L 98.50%, U2R 90.00% (10 test rows)
 
 **System Capacity**:
-- Test Set Size: 20,000 packets
-- Features: 12 network traffic metrics
-- Classes: 5 threat types
-- Model Size: ~15 MB
+- Benchmark test set: 29,117 connections
+- Live demo model: 12 network traffic features, 5 classes
 - Inference Speed: <1ms per packet
 
 **Database**:
-- Backend: PostgreSQL
+- Backend: SQLite (PostgreSQL-ready)
 - Table: ThreatLog (src_ip, dst_ip, protocol, label, confidence, timestamp)
-- Typical Rows: 1000+ alerts in production
+- Demo data: simulated alerts
 
 ---
 

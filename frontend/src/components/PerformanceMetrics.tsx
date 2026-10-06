@@ -15,8 +15,8 @@ interface MetricsData {
 const mockMetrics: MetricsData = {
   mttd: 2.5,
   mttr: 15,
-  accuracy: 99.82,
-  falsePositives: 0.18,
+  accuracy: 99.97,
+  falsePositives: 0.01,
 };
 
 export default function PerformanceMetrics() {

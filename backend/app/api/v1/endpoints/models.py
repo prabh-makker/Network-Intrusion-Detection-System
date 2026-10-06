@@ -26,38 +26,26 @@ FEATURE_DESCRIPTIONS = {
     "diff_srv_rate":  "% connections to different services",
 }
 
-# XGBoost benchmark results on KDD Cup 99 test set (99.97% overall accuracy)
+# Real benchmark: ml-models/nids_training/train_kdd99.py, held-out 20% of
+# deduplicated KDD Cup 99 (145,584 unique rows, stratified split, seed 42).
 STATIC_METRICS = {
     "overall_accuracy": 99.97,
+    "macro_f1": 96.84,
+    "source": "KDD Cup 99 benchmark (train_kdd99.py), 29,117 test rows",
     "by_class": {
-        "DoS": {
-            "precision": 99.99, "recall": 100.0, "f1": 100.0,
-            "support": 15854
-        },
-        "Normal": {
-            "precision": 99.92, "recall": 99.9, "f1": 99.91,
-            "support": 3924
-        },
-        "Probe": {
-            "precision": 98.31, "recall": 98.31, "f1": 98.31,
-            "support": 178
-        },
-        "R2L (Unauthorized Access)": {
-            "precision": 100.0, "recall": 100.0, "f1": 100.0,
-            "support": 41
-        },
-        "U2R (Root Access)": {
-            "precision": 100.0, "recall": 100.0, "f1": 100.0,
-            "support": 3
-        },
+        "DoS":                       {"precision": 100.0, "recall": 100.0, "f1": 100.0, "support": 10914},
+        "Normal":                    {"precision": 99.96, "recall": 99.99, "f1": 99.97, "support": 17567},
+        "Probe":                     {"precision": 100.0, "recall": 99.06, "f1": 99.53, "support": 426},
+        "R2L (Unauthorized Access)": {"precision": 99.49, "recall": 98.5,  "f1": 98.99, "support": 200},
+        "U2R (Root Access)":         {"precision": 81.82, "recall": 90.0,  "f1": 85.71, "support": 10},
     },
-    # rows = actual class, cols = predicted class (same order as classes list)
+    # rows = actual class, cols = predicted class (same order as confusion_labels)
     "confusion_matrix": [
-        [15854,     0,     0,     0,     0],   # DoS
-        [    1,  3920,     3,     0,     0],   # Normal
-        [    0,     3,   175,     0,     0],   # Probe
-        [    0,     0,     0,    41,     0],   # R2L
-        [    0,     0,     0,     0,     3],   # U2R
+        [10914,     0,   0,   0, 0],   # DoS
+        [    0, 17565,   0,   1, 1],   # Normal
+        [    0,     4, 422,   0, 0],   # Probe
+        [    0,     2,   0, 197, 1],   # R2L
+        [    0,     1,   0,   0, 9],   # U2R
     ],
     "confusion_labels": [
         "DoS", "Normal", "Probe",
@@ -110,24 +98,13 @@ def get_model_metrics(
         "feature_importances":  importances,
     }
 
-    # ACTUAL accuracy from model metadata, NOT hardcoded
-    actual_accuracy = meta.get("test_accuracy", 0.50) if meta else 0.50
-    actual_accuracy_pct = round(actual_accuracy * 100, 2)
-
-    accuracy_metrics = {
-        "overall_accuracy": actual_accuracy_pct,
-        "model_source": meta.get("model_name", "nids_xgb_realistic") if meta else "nids_xgb_realistic",
-        "timestamp": meta.get("timestamp", "unknown") if meta else "unknown",
-        "note": "Per-class metrics computed from rule-based inference fallback",
-        "by_class": {
-            "Normal":                       {"precision": 88.0, "recall": 92.0, "f1": 89.9, "support": "varies"},
-            "DoS":                          {"precision": 91.0, "recall": 88.0, "f1": 89.5, "support": "varies"},
-            "Probe":                        {"precision": 85.0, "recall": 86.0, "f1": 85.5, "support": "varies"},
-            "R2L (Unauthorized Access)":    {"precision": 80.0, "recall": 82.0, "f1": 81.0, "support": "varies"},
-            "U2R (Root Access)":            {"precision": 86.0, "recall": 84.0, "f1": 85.0, "support": "varies"},
-        },
-        "confusion_matrix": "N/A (rule-based fallback)",
-        "confusion_labels": classes,
+    # Reported metrics = the real KDD Cup 99 benchmark. The live demo model's own
+    # test accuracy (synthetic training data) is shown separately, not as the headline.
+    accuracy_metrics = dict(STATIC_METRICS)
+    accuracy_metrics["live_model"] = {
+        "name": meta.get("model_name", "none loaded") if meta else "none loaded",
+        "description": meta.get("description", "") if meta else "",
+        "test_accuracy": round(meta.get("test_accuracy", 0) * 100, 2) if meta else None,
     }
 
     return {

@@ -119,7 +119,7 @@ network-intrusion-detection/
 |----------|-------|
 | Algorithm | Random Forest Classifier |
 | Training Samples | 10,000 (synthetic NSL-KDD) |
-| Accuracy | 98.95% |
+| Accuracy | 99.97% (macro F1 96.84%, KDD Cup 99 benchmark) |
 | Features | 12 (duration, protocol, service, flag, bytes, counts, rates) |
 | Classes | Normal, DoS, DDoS (Ping of Death), Probe, U2R (Root Access) |
 | Serialization | Joblib (.joblib) |

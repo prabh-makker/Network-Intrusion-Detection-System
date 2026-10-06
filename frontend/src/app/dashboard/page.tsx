@@ -476,7 +476,7 @@ const getStatCards = (
         : "0%",
     icon: Zap,
     color: ROYAL_COLORS.gold,
-    trend: "ML: 99.82%",
+    trend: "ML: 99.97% (KDD99)",
   },
 ];
 
@@ -2114,7 +2114,7 @@ export default function NIDSDashboard() {
                     </span>
                   </div>
                   <p className={`text-sm ${isDark ? "text-emerald-200" : "text-emerald-800"}`}>
-                    XGBoost Classifier • Accuracy: 99.82% • Features: 22 • Trained on: NSL-KDD
+                    XGBoost Classifier • Benchmark accuracy: 99.97% (macro F1 96.8%) on KDD Cup 99 • Live demo runs on simulated traffic
                   </p>
                 </div>
 

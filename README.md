@@ -90,7 +90,8 @@ Navigate to **http://localhost:3001**
 - **Result (held-out 20%):** accuracy 99.97%, macro F1 96.84%. U2R is the weak class (F1 0.86, only 10 test samples), so look at macro F1 rather than accuracy.
 - **Reproduce:** `cd ml-models/nids_training && python train_kdd99.py`
 - **Caveat:** KDD Cup 99 is an old benchmark. Scores on it are optimistic compared with live traffic.
-- **Note:** `data/KDDTrain+.txt` and `KDDTest+.txt` in this repo are synthetic (random features), not the real NSL-KDD files. `train.py` trained on them reaches only about 53%. Replace them with the real files from https://www.unb.ca/cic/datasets/nsl-kdd.html before using `train.py`.
+- **Live dashboard:** the demo runs on simulated traffic (`sniffer/mock_generator.py`) with a demo model trained on synthetic data (`backend/scripts/train_mega_2000_2026.py`). The numbers above come from the KDD Cup 99 benchmark, not from the demo model.
+- **Built with:** the web app (FastAPI backend, Next.js frontend) was built with Claude Code.
 
 ## 📖 Documentation
 

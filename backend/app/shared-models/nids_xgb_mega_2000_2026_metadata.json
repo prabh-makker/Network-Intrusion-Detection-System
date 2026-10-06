@@ -1,18 +1,8 @@
 {
   "model_name": "nids_xgb_mega_2000_2026",
-  "description": "XGBoost trained on ALL IDS datasets 2000-2026 (30M+ samples)",
-  "dataset": "mega-combined",
-  "datasets_included": [
-    "KDD99 (1999, 4.9M)",
-    "NSL-KDD (1998, 125K)",
-    "UNSW-NB15 (2015, 2.5M)",
-    "CICIDS2017 (2017, 2.8M)",
-    "CICIDS2018 (2018, 500K)",
-    "CICIDS2019 (2019, 400K)",
-    "CICIDS2020 (2020, 1M)"
-  ],
+  "description": "Demo model for the live dashboard: XGBoost on 12 KDD-style features, trained on 30,000 synthetic rows (backend/scripts/train_mega_2000_2026.py). Not a benchmark; see ml-models/nids_training/train_kdd99.py for the real KDD Cup 99 result.",
+  "dataset": "synthetic (generated, shaped after public IDS datasets)",
   "total_samples": 30000,
-  "total_years": 20,
   "test_accuracy": 0.9591666666666666,
   "cv_mean": 0.9500666666666667,
   "cv_std": 0.002642809952388667,
